@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+coverage
+.dart_tool
+package-lock.json
+pubspec.lock
+apps/mobile/android
+apps/mobile/lib/l10n/app_localizations.dart
+apps/mobile/lib/l10n/app_localizations_en.dart
+apps/mobile/lib/l10n/app_localizations_vi.dart
+*.png
+*.jar
+Makefile

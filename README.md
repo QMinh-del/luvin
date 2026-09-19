@@ -4,13 +4,13 @@ Private GitHub repository. Do not commit credentials, `.env` files, keystores, o
 
 ## Pinned tool versions
 
-| Tool | Version |
-| --- | --- |
+| Tool    | Version |
+| ------- | ------- |
 | Node.js | 24.21.0 |
-| npm | 11.19.0 |
-| Java | 21 |
-| Flutter | 3.47.5 |
-| Dart | 3.13.4 |
+| npm     | 11.19.0 |
+| Java    | 21      |
+| Flutter | 3.47.5  |
+| Dart    | 3.13.4  |
 
 Mobile fallback locale: `en` (`LUVIN_FALLBACK_LOCALE` in `.env.example`).
 
@@ -18,13 +18,13 @@ Android package ID: `com.luvin.app`.
 
 ## Folder ownership
 
-| Path | GitHub team |
-| --- | --- |
-| Repository default (`*`) | `@luvin/maintainers` |
-| `/apps/api/` | `@luvin/backend-maintainers` |
-| `/apps/mobile/` | `@luvin/mobile-maintainers` |
-| `/packages/shared-types/` | `@luvin/contract-maintainers` |
-| `/infrastructure/` | `@luvin/infrastructure-maintainers` |
+| Path                      | GitHub team                         |
+| ------------------------- | ----------------------------------- |
+| Repository default (`*`)  | `@luvin/maintainers`                |
+| `/apps/api/`              | `@luvin/backend-maintainers`        |
+| `/apps/mobile/`           | `@luvin/mobile-maintainers`         |
+| `/packages/shared-types/` | `@luvin/contract-maintainers`       |
+| `/infrastructure/`        | `@luvin/infrastructure-maintainers` |
 
 See [`CODEOWNERS`](CODEOWNERS) for the authoritative mapping. Replace placeholder team handles before enabling branch protection on the private remote.
 
@@ -52,7 +52,7 @@ npm run mobile:test
 npm run mobile:build
 ```
 
-Makefile equivalents: `make install`, `make lint`, `make typecheck`, `make test`, `make build`, `make mobile-analyze`, `make mobile-test`, `make mobile-build`.
+Makefile equivalents: `make install`, `make lint`, `make format-check`, `make typecheck`, `make test`, `make build`, `make mobile-analyze`, `make mobile-test`, `make mobile-build`.
 
 ## Database and local services
 
@@ -70,6 +70,28 @@ npm run infra:test:down
 Development data uses persistent volumes and database `luvin_local`. Test data uses tmpfs, port offsets, database `luvin_test`, and `luvin-test-*` buckets. See `infrastructure/docker/README.md`.
 
 Copy `.env.example` to `.env` locally. Do not commit `.env`.
+
+## CI
+
+GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. Jobs are named by application and command. The workflow uses `contents: read` and the protected `ci` environment. Do not store long-lived production credentials in Actions.
+
+Local equivalents:
+
+```text
+npm run format:check
+npm run lint
+npm run typecheck
+npm run test
+npx prisma validate --schema apps/api/prisma/schema.prisma
+# Prisma validate requires DATABASE_URL in the environment. Use a non-secret placeholder; it does not connect.
+npm run mobile:analyze
+npm run mobile:test
+npm audit --audit-level=critical
+```
+
+Require these status checks on `main` before merge: Backend lint, typecheck, and tests; Prisma schema validation; API local-infrastructure integration tests; Flutter analyze and tests; Secret scan; Dependency audit.
+
+Pinned Flutter/Dart (`3.47.5` / `3.13.4`) does not include `dart pub audit`. Dependency audit in CI is `npm audit --audit-level=critical` plus a remaining-findings report. Residual high/moderate npm findings are not treated as merge blockers in this task.
 
 ## Product scope (TASK-B01)
 

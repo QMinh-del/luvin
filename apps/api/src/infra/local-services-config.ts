@@ -40,11 +40,7 @@ function parseMinioEndpoint(raw: string): {
   const withProtocol = raw.includes("://") ? raw : `http://${raw}`;
   const url = new URL(withProtocol);
   const useSSL = url.protocol === "https:";
-  const port = url.port
-    ? Number.parseInt(url.port, 10)
-    : useSSL
-      ? 443
-      : 80;
+  const port = url.port ? Number.parseInt(url.port, 10) : useSSL ? 443 : 80;
   return {
     endPoint: url.hostname,
     port,

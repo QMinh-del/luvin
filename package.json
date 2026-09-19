@@ -14,6 +14,8 @@
   ],
   "scripts": {
     "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
@@ -25,5 +27,8 @@
     "infra:test:up": "docker compose -f infrastructure/docker/compose.test.yaml up -d --wait",
     "infra:test:down": "docker compose -f infrastructure/docker/compose.test.yaml down -v",
     "infra:verify": "npm run test:infra --workspace=@luvin/api"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
   }
 }

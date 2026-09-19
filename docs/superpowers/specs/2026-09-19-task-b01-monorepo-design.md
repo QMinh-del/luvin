@@ -11,20 +11,20 @@ This spec records implementation choices for TASK-B01 only. It does not change p
 
 ## 1. Decisions
 
-| Topic | Choice |
-|---|---|
-| JavaScript workspace | npm workspaces |
-| Node / npm pin | Node 24 (machine: v24.21.0) and npm 11 (machine: 11.19.0) |
-| Flutter / Dart pin | Latest Flutter stable at install time; pin in documentation and CI-ready version files |
-| Product fallback locale | `en`; device `vi` uses Vietnamese |
-| Environment files | Root `.env.example` plus `apps/api/.env.example` |
-| Environment names | `local`, `test`, `development`, `staging`, `production` |
-| Android ID | `com.luvin.app` in every build environment |
-| Signing | Flutter default debug signing only; no release keystore in git |
-| GitHub | Document private-repo roles and branch ownership; do not create a remote in B01 |
-| Scaffold style | Minimal Luvin-shaped foundation; no feature modules |
-| Root commands | npm scripts and a Makefile that wraps the same commands |
-| Flutter SDK | May install Flutter stable into the user PATH without administrator elevation during implementation |
+| Topic                   | Choice                                                                                              |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| JavaScript workspace    | npm workspaces                                                                                      |
+| Node / npm pin          | Node 24 (machine: v24.21.0) and npm 11 (machine: 11.19.0)                                           |
+| Flutter / Dart pin      | Latest Flutter stable at install time; pin in documentation and CI-ready version files              |
+| Product fallback locale | `en`; device `vi` uses Vietnamese                                                                   |
+| Environment files       | Root `.env.example` plus `apps/api/.env.example`                                                    |
+| Environment names       | `local`, `test`, `development`, `staging`, `production`                                             |
+| Android ID              | `com.luvin.app` in every build environment                                                          |
+| Signing                 | Flutter default debug signing only; no release keystore in git                                      |
+| GitHub                  | Document private-repo roles and branch ownership; do not create a remote in B01                     |
+| Scaffold style          | Minimal Luvin-shaped foundation; no feature modules                                                 |
+| Root commands           | npm scripts and a Makefile that wraps the same commands                                             |
+| Flutter SDK             | May install Flutter stable into the user PATH without administrator elevation during implementation |
 
 ## 2. Out of scope
 

@@ -27,24 +27,24 @@
 
 Create under `D:\Luvin\code`:
 
-| Path | Responsibility |
-|---|---|
-| `package.json` | npm workspaces, engines, root scripts |
-| `package-lock.json` | lockfile after install |
-| `.nvmrc` | `24` |
-| `.npmrc` | `engine-strict=true` |
-| `.editorconfig` | UTF-8, LF, indent rules |
-| `.gitignore` | secrets, build, keystores |
-| `.gitattributes` | LF for source, CRLF exception for `.sln` none |
-| `.env.example` | env names and non-secret placeholders |
-| `Makefile` | wraps npm/flutter scripts |
-| `README.md` | commands, ownership, GitHub roles, pinned versions |
-| `CODEOWNERS` | documented ownership paths |
-| `packages/shared-types/*` | version export only |
-| `apps/api/*` | NestJS bootstrap + Prisma datasource |
-| `apps/mobile/*` | Flutter Android shell + l10n + Riverpod |
-| `infrastructure/docker/README.md` | B02 placeholder |
-| `apps/mobile/.flutter-version` | pinned Flutter version after install |
+| Path                              | Responsibility                                     |
+| --------------------------------- | -------------------------------------------------- |
+| `package.json`                    | npm workspaces, engines, root scripts              |
+| `package-lock.json`               | lockfile after install                             |
+| `.nvmrc`                          | `24`                                               |
+| `.npmrc`                          | `engine-strict=true`                               |
+| `.editorconfig`                   | UTF-8, LF, indent rules                            |
+| `.gitignore`                      | secrets, build, keystores                          |
+| `.gitattributes`                  | LF for source, CRLF exception for `.sln` none      |
+| `.env.example`                    | env names and non-secret placeholders              |
+| `Makefile`                        | wraps npm/flutter scripts                          |
+| `README.md`                       | commands, ownership, GitHub roles, pinned versions |
+| `CODEOWNERS`                      | documented ownership paths                         |
+| `packages/shared-types/*`         | version export only                                |
+| `apps/api/*`                      | NestJS bootstrap + Prisma datasource               |
+| `apps/mobile/*`                   | Flutter Android shell + l10n + Riverpod            |
+| `infrastructure/docker/README.md` | B02 placeholder                                    |
+| `apps/mobile/.flutter-version`    | pinned Flutter version after install               |
 
 Delete `D:\Luvin\code\.gitkeep` when real files exist.
 
@@ -53,10 +53,12 @@ Delete `D:\Luvin\code\.gitkeep` when real files exist.
 ### Task 1: Toolchain and Flutter stable
 
 **Files:**
+
 - Create: `D:\Luvin\code\.nvmrc`
 - Create: `D:\Luvin\code\apps\mobile\.flutter-version` (after Flutter is installed)
 
 **Interfaces:**
+
 - Consumes: existing Node `v24.21.0`, npm `11.19.0`, Java `21.0.6`
 - Produces: `flutter` and `dart` on the user PATH; exact Flutter version string for later README pinning
 
@@ -127,6 +129,7 @@ git commit -m "chore: pin Node 24 and Flutter stable for TASK-B01"
 ### Task 2: Root workspace, ignore rules, and Makefile
 
 **Files:**
+
 - Create: `D:\Luvin\code\package.json`
 - Create: `D:\Luvin\code\.npmrc`
 - Create: `D:\Luvin\code\.editorconfig`
@@ -136,6 +139,7 @@ git commit -m "chore: pin Node 24 and Flutter stable for TASK-B01"
 - Delete: `D:\Luvin\code\.gitkeep`
 
 **Interfaces:**
+
 - Consumes: Node 24 / npm 11 from Task 1
 - Produces: workspaces `apps/api` and `packages/shared-types`; scripts `lint`, `typecheck`, `test`, `build`, `mobile:analyze`, `mobile:test`, `mobile:build`
 
@@ -152,10 +156,7 @@ git commit -m "chore: pin Node 24 and Flutter stable for TASK-B01"
     "npm": ">=11.19.0 <12"
   },
   "packageManager": "npm@11.19.0",
-  "workspaces": [
-    "apps/api",
-    "packages/shared-types"
-  ],
+  "workspaces": ["apps/api", "packages/shared-types"],
   "scripts": {
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
@@ -294,12 +295,14 @@ git commit -m "chore: add npm workspaces root and ignore rules"
 ### Task 3: `packages/shared-types`
 
 **Files:**
+
 - Create: `D:\Luvin\code\packages\shared-types\package.json`
 - Create: `D:\Luvin\code\packages\shared-types\tsconfig.json`
 - Create: `D:\Luvin\code\packages\shared-types\src\index.ts`
 - Test: `D:\Luvin\code\packages\shared-types\src\index.spec.ts`
 
 **Interfaces:**
+
 - Consumes: root workspaces from Task 2
 - Produces: `export const LUVIN_CONTRACT_VERSION: string` with value `'0.0.0'` from `@luvin/shared-types`
 
@@ -401,6 +404,7 @@ git commit -m "feat: add empty @luvin/shared-types package"
 ### Task 4: NestJS API bootstrap and Prisma
 
 **Files:**
+
 - Create: `D:\Luvin\code\apps\api\package.json`
 - Create: `D:\Luvin\code\apps\api\tsconfig.json`
 - Create: `D:\Luvin\code\apps\api\tsconfig.build.json`
@@ -412,6 +416,7 @@ git commit -m "feat: add empty @luvin/shared-types package"
 - Test: `D:\Luvin\code\apps\api\src\app.bootstrap.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `@luvin/shared-types` `LUVIN_CONTRACT_VERSION`
 - Produces: Nest `AppModule` that boots; Prisma PostgreSQL datasource with zero product models; `ValidationPipe` in `main.ts`
 
@@ -515,9 +520,9 @@ export default tseslint.config(
   {
     files: ["src/**/*.ts"],
     rules: {
-      "@typescript-eslint/no-explicit-any": "error"
-    }
-  }
+      "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
 );
 ```
 
@@ -649,6 +654,7 @@ git commit -m "feat: bootstrap NestJS API with empty Prisma schema"
 ### Task 5: Flutter Android shell, Riverpod, and l10n
 
 **Files:**
+
 - Create via `flutter create` then replace: `D:\Luvin\code\apps\mobile\**`
 - Modify: `D:\Luvin\code\apps\mobile\android\app\build.gradle.kts` (or `.gradle`) `applicationId` / `namespace` / `minSdk`
 - Create: `D:\Luvin\code\apps\mobile\l10n.yaml`
@@ -659,6 +665,7 @@ git commit -m "feat: bootstrap NestJS API with empty Prisma schema"
 - Test: `D:\Luvin\code\apps\mobile\test\locale_shell_test.dart`
 
 **Interfaces:**
+
 - Consumes: Flutter stable from Task 1; fallback locale `en`
 - Produces: `localeProvider` (`NotifierProvider<LocaleController, Locale?>`); shell screen with Vietnamese/English switch; `com.luvin.app`
 
@@ -938,12 +945,14 @@ git commit -m "feat: add Flutter Android shell with vi/en switching"
 ### Task 6: Env examples, ownership docs, docker placeholder
 
 **Files:**
+
 - Create: `D:\Luvin\code\.env.example`
 - Create: `D:\Luvin\code\README.md`
 - Create: `D:\Luvin\code\CODEOWNERS`
 - Create: `D:\Luvin\code\infrastructure\docker\README.md`
 
 **Interfaces:**
+
 - Consumes: pinned Flutter version from Task 1; scripts from Task 2
 - Produces: documented folder ownership and GitHub roles; env examples with no secrets
 
@@ -1008,6 +1017,7 @@ npm run mobile:build
 ```
 
 Makefile equivalents: `make install`, `make lint`, `make typecheck`, `make test`, `make build`, `make mobile-analyze`, `make mobile-test`, `make mobile-build`.
+
 - Android package ID `com.luvin.app`.
 - Prisma is initialized without product tables. Database services arrive in TASK-B02. Migrations arrive in TASK-C01.
 - Chat is not implemented. Do not describe the product as E2EE.
@@ -1033,9 +1043,11 @@ git commit -m "docs: add workspace commands, ownership, and env examples"
 ### Task 7: TASK-B01 verification gate
 
 **Files:**
+
 - Modify: none unless a check fails in-scope
 
 **Interfaces:**
+
 - Consumes: all previous tasks
 - Produces: PASS evidence for TASK-B01 acceptance criteria
 

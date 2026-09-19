@@ -4,7 +4,9 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prepare": "npm run build",
     "lint": "echo \"lint skipped until eslint config in api\"",

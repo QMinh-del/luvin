@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend lint, typecheck, and tests
+    runs-on: ubuntu-latest
+    environment: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install JavaScript workspaces
+        run: npm ci
+      - name: Generate Prisma Client
+        working-directory: apps/api
+        run: npx prisma generate
+      - name: Check formatting
+        run: npm run format:check
+      - name: Lint (@luvin/api)
+        run: npm run lint --workspace=@luvin/api
+      - name: Typecheck (workspaces)
+        run: npm run typecheck
+      - name: Unit tests (workspaces)
+        run: npm run test
+
+  prisma:
+    name: Prisma schema validation
+    runs-on: ubuntu-latest
+    environment: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install JavaScript workspaces
+        run: npm ci
+      - name: Validate Prisma schema (@luvin/api)
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
+        run: npx prisma validate
+
+  api-integration:
+    name: API local-infrastructure integration tests
+    runs-on: ubuntu-latest
+    environment: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install JavaScript workspaces
+        run: npm ci
+      - name: Start isolated test Compose
+        run: npm run infra:test:up
+      - name: Verify API connectivity to test services
+        env:
+          RUN_INFRA_TESTS: "1"
+        run: npm run infra:verify
+      - name: Stop test Compose
+        if: always()
+        run: npm run infra:test:down
+
+  mobile:
+    name: Flutter analyze and tests
+    runs-on: ubuntu-latest
+    environment: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.47.5"
+          cache: true
+      - name: Install Flutter packages
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Analyze (@luvin/mobile)
+        run: npm run mobile:analyze
+      - name: Widget tests (@luvin/mobile)
+        run: npm run mobile:test
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    environment: ci
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        run: docker run --rm -v "$PWD:/src" zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f detect --source=/src --verbose --redact
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    environment: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install JavaScript workspaces
+        run: npm ci
+      - name: npm audit (fail on critical)
+        run: npm audit --audit-level=critical
+      - name: Report remaining npm audit findings
+        run: npm audit || true
