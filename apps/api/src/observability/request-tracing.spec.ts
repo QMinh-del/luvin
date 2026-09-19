@@ -16,6 +16,7 @@ const LOCAL_ENV: NodeJS.ProcessEnv = {
   MINIO_ENDPOINT: "127.0.0.1:9000",
   MINIO_ACCESS_KEY: "luvin",
   MINIO_SECRET_KEY: "luvinminio",
+  ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
 };
 
 @Module({

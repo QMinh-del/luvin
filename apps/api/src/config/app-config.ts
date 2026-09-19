@@ -23,15 +23,33 @@ export type ResendRuntimeConfig =
     }
   | {
       mode: "sandbox";
-      apiKeyPresent: true;
+      apiKey: string;
       from: string;
     }
   | {
       mode: "production";
-      apiKeyPresent: true;
+      apiKey: string;
       from: string;
       domainVerified: true;
     };
+
+export type AuthRateLimitPolicy = {
+  max: number;
+  captchaAfter: number;
+};
+
+export type AuthRateLimitsConfig = {
+  windowSec: number;
+  register: AuthRateLimitPolicy;
+  login: AuthRateLimitPolicy;
+  refresh: AuthRateLimitPolicy;
+  password_reset: AuthRateLimitPolicy;
+  email_change: AuthRateLimitPolicy;
+};
+
+export type TurnstileRuntimeConfig =
+  | { mode: "local" }
+  | { mode: "cloudflare"; secret: string };
 
 export type AppConfig = {
   luvinEnv: LuvinEnv;
@@ -43,6 +61,9 @@ export type AppConfig = {
   passwordRecoveryEnabled: boolean;
   resend: ResendRuntimeConfig;
   localServices: LocalServicesConfig | undefined;
+  accessTokenSecret: string;
+  authRateLimits: AuthRateLimitsConfig;
+  turnstile: TurnstileRuntimeConfig;
 };
 
 const LUVIN_ENVS: readonly LuvinEnv[] = [
@@ -134,7 +155,7 @@ function readResendConfig(
         "RESEND_SANDBOX_API_KEY is required when password recovery is enabled",
       );
     }
-    return { mode: "sandbox", apiKeyPresent: true, from: sandboxFrom };
+    return { mode: "sandbox", apiKey: sandboxKey, from: sandboxFrom };
   }
 
   if (sandboxKey) {
@@ -166,7 +187,7 @@ function readResendConfig(
     }
     return {
       mode: "production",
-      apiKeyPresent: true,
+      apiKey: productionKey,
       from: productionFrom,
       domainVerified: true,
     };
@@ -193,6 +214,14 @@ export function readAppConfig(env: NodeJS.ProcessEnv): AppConfig {
   }
 
   const resend = readResendConfig(env, luvinEnv, passwordRecoveryEnabled);
+  const accessTokenSecret = required(env, "ACCESS_TOKEN_SECRET");
+  if (accessTokenSecret.length < 32) {
+    throw new ConfigValidationError(
+      "ACCESS_TOKEN_SECRET must be at least 32 characters",
+    );
+  }
+  const authRateLimits = readAuthRateLimits(env);
+  const turnstile = readTurnstileConfig(env, luvinEnv);
 
   if (luvinEnv === "local" || luvinEnv === "test") {
     let localServices;
@@ -215,6 +244,9 @@ export function readAppConfig(env: NodeJS.ProcessEnv): AppConfig {
       passwordRecoveryEnabled,
       resend,
       localServices,
+      accessTokenSecret,
+      authRateLimits,
+      turnstile,
     };
   }
 
@@ -228,6 +260,9 @@ export function readAppConfig(env: NodeJS.ProcessEnv): AppConfig {
     passwordRecoveryEnabled,
     resend,
     localServices: undefined,
+    accessTokenSecret,
+    authRateLimits,
+    turnstile,
   };
 }
 
@@ -240,5 +275,99 @@ export function publicAppConfig(config: AppConfig): Record<string, unknown> {
     passwordRecoveryEnabled: config.passwordRecoveryEnabled,
     resendMode: config.resend.mode,
     hasLocalServices: Boolean(config.localServices),
+    turnstileMode: config.turnstile.mode,
   };
+}
+
+function parsePositiveInt(
+  raw: string | undefined,
+  fallback: number,
+  label: string,
+): number {
+  if (raw === undefined || raw.trim() === "") {
+    return fallback;
+  }
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new ConfigValidationError(`${label} must be a positive integer`);
+  }
+  return value;
+}
+
+function readAuthRateLimits(env: NodeJS.ProcessEnv): AuthRateLimitsConfig {
+  const windowSec = parsePositiveInt(
+    env.AUTH_RATE_LIMIT_WINDOW_SEC,
+    900,
+    "AUTH_RATE_LIMIT_WINDOW_SEC",
+  );
+  const registerMax = parsePositiveInt(
+    env.AUTH_RATE_LIMIT_REGISTER_MAX,
+    5,
+    "AUTH_RATE_LIMIT_REGISTER_MAX",
+  );
+  const loginMax = parsePositiveInt(
+    env.AUTH_RATE_LIMIT_LOGIN_MAX,
+    10,
+    "AUTH_RATE_LIMIT_LOGIN_MAX",
+  );
+  const refreshMax = parsePositiveInt(
+    env.AUTH_RATE_LIMIT_REFRESH_MAX,
+    60,
+    "AUTH_RATE_LIMIT_REFRESH_MAX",
+  );
+  const resetMax = parsePositiveInt(
+    env.AUTH_RATE_LIMIT_PASSWORD_RESET_MAX,
+    5,
+    "AUTH_RATE_LIMIT_PASSWORD_RESET_MAX",
+  );
+  const emailMax = parsePositiveInt(
+    env.AUTH_RATE_LIMIT_EMAIL_CHANGE_MAX,
+    5,
+    "AUTH_RATE_LIMIT_EMAIL_CHANGE_MAX",
+  );
+  return {
+    windowSec,
+    register: {
+      max: registerMax,
+      captchaAfter: parsePositiveInt(
+        env.AUTH_TURNSTILE_REGISTER_AFTER,
+        Math.min(3, registerMax),
+        "AUTH_TURNSTILE_REGISTER_AFTER",
+      ),
+    },
+    login: {
+      max: loginMax,
+      captchaAfter: parsePositiveInt(
+        env.AUTH_TURNSTILE_LOGIN_AFTER,
+        Math.min(5, loginMax),
+        "AUTH_TURNSTILE_LOGIN_AFTER",
+      ),
+    },
+    refresh: { max: refreshMax, captchaAfter: refreshMax + 1 },
+    password_reset: {
+      max: resetMax,
+      captchaAfter: parsePositiveInt(
+        env.AUTH_TURNSTILE_PASSWORD_RESET_AFTER,
+        Math.min(3, resetMax),
+        "AUTH_TURNSTILE_PASSWORD_RESET_AFTER",
+      ),
+    },
+    email_change: { max: emailMax, captchaAfter: emailMax + 1 },
+  };
+}
+
+function readTurnstileConfig(
+  env: NodeJS.ProcessEnv,
+  luvinEnv: LuvinEnv,
+): TurnstileRuntimeConfig {
+  const secret = optional(env, "TURNSTILE_SECRET_KEY");
+  if (secret) {
+    return { mode: "cloudflare", secret };
+  }
+  if (luvinEnv === "staging" || luvinEnv === "production") {
+    throw new ConfigValidationError(
+      "TURNSTILE_SECRET_KEY is required in staging and production",
+    );
+  }
+  return { mode: "local" };
 }

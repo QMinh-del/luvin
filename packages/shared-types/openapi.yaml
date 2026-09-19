@@ -33,6 +33,115 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthReadyResponse"
+  /auth/register:
+    post:
+      summary: Register an account
+      operationId: postAuthRegister
+      responses:
+        "201":
+          description: Registration succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSessionResponse"
+        "422":
+          description: Validation, age, legal, or captcha failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+  /auth/login:
+    post:
+      summary: Authenticate
+      operationId: postAuthLogin
+      responses:
+        "200":
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSessionResponse"
+  /auth/refresh:
+    post:
+      summary: Rotate refresh token
+      operationId: postAuthRefresh
+      responses:
+        "200":
+          description: New session tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSessionResponse"
+  /auth/logout:
+    post:
+      summary: Revoke current session
+      operationId: postAuthLogout
+      responses:
+        "204":
+          description: Logged out
+  /auth/sessions:
+    get:
+      summary: List sessions
+      operationId: getAuthSessions
+      responses:
+        "200":
+          description: Session list without token material
+  /auth/sessions/{sessionId}:
+    delete:
+      summary: Revoke a session
+      operationId: deleteAuthSession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Session revoked
+  /auth/password-reset/request:
+    post:
+      summary: Request a password reset
+      operationId: postAuthPasswordResetRequest
+      responses:
+        "202":
+          description: Accepted regardless of account existence
+  /auth/password-reset/confirm:
+    post:
+      summary: Confirm a password reset
+      operationId: postAuthPasswordResetConfirm
+      responses:
+        "204":
+          description: Password updated and sessions revoked
+  /account/email-change/request:
+    post:
+      summary: Request email change
+      operationId: postAccountEmailChangeRequest
+      responses:
+        "202":
+          description: Verification sent; current email remains active
+  /account/email-change/confirm:
+    post:
+      summary: Confirm email change
+      operationId: postAccountEmailChangeConfirm
+      responses:
+        "204":
+          description: Login email replaced
+  /account/date-of-birth:
+    patch:
+      summary: Correct date of birth once
+      operationId: patchAccountDateOfBirth
+      responses:
+        "200":
+          description: Correction applied
+  /account/legal-consent:
+    post:
+      summary: Accept current required legal versions
+      operationId: postAccountLegalConsent
+      responses:
+        "204":
+          description: Consent recorded
 components:
   schemas:
     SuccessMeta:
@@ -98,3 +207,40 @@ components:
                 type: string
             requestId:
               type: string
+    AuthSessionData:
+      type: object
+      required:
+        [
+          accessToken,
+          refreshToken,
+          userId,
+          sessionId,
+          accountState,
+          requiredLegalActions,
+        ]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        accountState:
+          type: string
+        requiredLegalActions:
+          type: array
+          items:
+            type: string
+            enum: [ACCEPT_TERMS, ACCEPT_PRIVACY]
+    AuthSessionResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/AuthSessionData"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"

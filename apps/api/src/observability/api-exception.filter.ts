@@ -24,6 +24,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     const { status, code, message, fields } = this.mapException(exception);
 
+    if (code === "RATE_LIMITED" && fields.retryAfterSeconds) {
+      response.setHeader("Retry-After", fields.retryAfterSeconds);
+    }
+
     this.logger.writeEvent(
       status >= 500 ? "ERROR" : "WARNING",
       "http.exception",
@@ -68,10 +72,17 @@ export class ApiExceptionFilter implements ExceptionFilter {
               ),
             )
           : {};
+      const code =
+        typeof payload === "object" &&
+        payload !== null &&
+        "code" in payload &&
+        typeof payload.code === "string"
+          ? payload.code
+          : httpStatusToCode(status);
       return {
         status,
-        code: httpStatusToCode(status),
-        message: safeHttpMessage(status),
+        code,
+        message: safeHttpMessage(status, code),
         fields,
       };
     }
@@ -107,7 +118,22 @@ function httpStatusToCode(status: number): string {
   }
 }
 
-function safeHttpMessage(status: number): string {
+function safeHttpMessage(status: number, code?: string): string {
+  if (code === "AGE_INELIGIBLE") {
+    return "Age eligibility was not met";
+  }
+  if (code === "CAPTCHA_REQUIRED") {
+    return "Captcha verification is required";
+  }
+  if (code === "CAPTCHA_INVALID") {
+    return "Captcha verification failed";
+  }
+  if (code === "ACCOUNT_AGE_INELIGIBLE") {
+    return "Account is limited to export and deletion";
+  }
+  if (code === "LEGAL_CONSENT_REQUIRED") {
+    return "Updated legal terms must be accepted";
+  }
   switch (status) {
     case HttpStatus.NOT_FOUND:
       return "Resource unavailable";

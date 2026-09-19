@@ -13,6 +13,7 @@ const LOCAL_BASE: NodeJS.ProcessEnv = {
   MINIO_ENDPOINT: "127.0.0.1:9000",
   MINIO_ACCESS_KEY: "luvin",
   MINIO_SECRET_KEY: "luvinminio",
+  ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
 };
 
 test("fails fast when required local variables are missing", () => {
@@ -45,6 +46,7 @@ test("requires sandbox Resend when recovery is enabled in development", () => {
         LUVIN_ENV: "development",
         DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5432/luvin_dev",
         REDIS_URL: "redis://127.0.0.1:6379",
+        ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
         PASSWORD_RECOVERY_ENABLED: "true",
       }),
     /RESEND_SANDBOX_API_KEY/,
@@ -56,6 +58,7 @@ test("uses sandbox Resend in development when recovery is enabled", () => {
     LUVIN_ENV: "development",
     DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5432/luvin_dev",
     REDIS_URL: "redis://127.0.0.1:6379",
+    ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
     PASSWORD_RECOVERY_ENABLED: "true",
     RESEND_SANDBOX_API_KEY: "re_test_sandbox",
   });
@@ -80,6 +83,7 @@ test("fails production startup when recovery is enabled without a verified sende
         LUVIN_ENV: "production",
         DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5432/luvin_prod",
         REDIS_URL: "redis://127.0.0.1:6379",
+        ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
         GOOGLE_CLOUD_PROJECT: "luvin-prod",
         PASSWORD_RECOVERY_ENABLED: "true",
         RESEND_PRODUCTION_API_KEY: "re_prod",
@@ -99,5 +103,19 @@ test("requires Google Cloud project in production", () => {
         REDIS_URL: "redis://127.0.0.1:6379",
       }),
     /GOOGLE_CLOUD_PROJECT/,
+  );
+});
+
+test("requires Turnstile secret in production", () => {
+  assert.throws(
+    () =>
+      readAppConfig({
+        LUVIN_ENV: "production",
+        DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5432/luvin_prod",
+        REDIS_URL: "redis://127.0.0.1:6379",
+        ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
+        GOOGLE_CLOUD_PROJECT: "luvin-prod",
+      }),
+    /TURNSTILE_SECRET_KEY/,
   );
 });

@@ -30,3 +30,12 @@ export type HealthReadyData = {
     objectStorage: HealthCheckState;
   };
 };
+
+export type AuthSessionData = {
+  accessToken: string;
+  refreshToken: string;
+  userId: string;
+  sessionId: string;
+  accountState: string;
+  requiredLegalActions: Array<"ACCEPT_TERMS" | "ACCEPT_PRIVACY">;
+};

@@ -17,6 +17,7 @@ test("mail failure logs do not include recipient or reset link", () => {
       LUVIN_ENV: "development",
       DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5432/luvin_dev",
       REDIS_URL: "redis://127.0.0.1:6379",
+      ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
       PASSWORD_RECOVERY_ENABLED: "true",
       RESEND_SANDBOX_API_KEY: "re_test_sandbox",
     });

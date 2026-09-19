@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { StructuredLogger } from "../observability/structured-logger";
 
-export type TransactionalMailKind = "password_reset";
+export type TransactionalMailKind = "password_reset" | "email_change";
 
 @Injectable()
 export class MailObservability {
