@@ -1,0 +1,8 @@
+# Replace GitHub team handles before enabling branch protection on the private remote.
+# Default branch: main. Direct pushes to main are not allowed once the remote exists.
+
+* @luvin/maintainers
+/apps/api/ @luvin/backend-maintainers
+/apps/mobile/ @luvin/mobile-maintainers
+/packages/shared-types/ @luvin/contract-maintainers
+/infrastructure/ @luvin/infrastructure-maintainers
