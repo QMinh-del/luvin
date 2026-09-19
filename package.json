@@ -1,0 +1,24 @@
+{
+  "name": "luvin",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Luvin monorepo: NestJS API, Flutter Android app, shared types",
+  "engines": {
+    "node": ">=24.21.0 <25",
+    "npm": ">=11.19.0 <12"
+  },
+  "packageManager": "npm@11.19.0",
+  "workspaces": [
+    "apps/api",
+    "packages/shared-types"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "mobile:analyze": "flutter analyze --cwd apps/mobile",
+    "mobile:test": "flutter test --cwd apps/mobile",
+    "mobile:build": "flutter build apk --debug --cwd apps/mobile"
+  }
+}
