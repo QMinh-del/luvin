@@ -1,0 +1,18 @@
+{
+  "name": "@luvin/shared-types",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "lint": "echo \"lint skipped until eslint config in api\"",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/index.spec.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5",
+    "typescript": "~5.7.3"
+  }
+}
