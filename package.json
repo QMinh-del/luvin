@@ -19,6 +19,11 @@
     "build": "npm run build --workspaces --if-present",
     "mobile:analyze": "cd apps/mobile && flutter analyze",
     "mobile:test": "cd apps/mobile && flutter test",
-    "mobile:build": "cd apps/mobile && flutter build apk --debug"
+    "mobile:build": "cd apps/mobile && flutter build apk --debug",
+    "infra:up": "docker compose -f infrastructure/docker/compose.yaml up -d --wait",
+    "infra:down": "docker compose -f infrastructure/docker/compose.yaml down",
+    "infra:test:up": "docker compose -f infrastructure/docker/compose.test.yaml up -d --wait",
+    "infra:test:down": "docker compose -f infrastructure/docker/compose.test.yaml down -v",
+    "infra:verify": "npm run test:infra --workspace=@luvin/api"
   }
 }

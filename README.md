@@ -54,9 +54,22 @@ npm run mobile:build
 
 Makefile equivalents: `make install`, `make lint`, `make typecheck`, `make test`, `make build`, `make mobile-analyze`, `make mobile-test`, `make mobile-build`.
 
-## Database and Prisma
+## Database and local services
 
-Prisma is initialized without product tables. Database services (PostgreSQL, Redis, MinIO) arrive in TASK-B02. Migrations arrive in TASK-C01.
+Prisma is initialized without product tables. Migrations arrive in TASK-C01.
+
+Pinned local images: PostgreSQL 16.15 (`postgres:16-alpine` digest `3c5c8892…`), Redis 7.4 (`redis:7.4-alpine` digest `520775a4…`), MinIO and `mc` from `quay.io` (digests in `infrastructure/docker/compose.yaml`). Docker Hub `minio/mc` is not used because pulls are denied.
+
+```text
+npm run infra:up
+npm run infra:down
+npm run infra:test:up
+npm run infra:test:down
+```
+
+Development data uses persistent volumes and database `luvin_local`. Test data uses tmpfs, port offsets, database `luvin_test`, and `luvin-test-*` buckets. See `infrastructure/docker/README.md`.
+
+Copy `.env.example` to `.env` locally. Do not commit `.env`.
 
 ## Product scope (TASK-B01)
 

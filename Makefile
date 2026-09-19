@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test build mobile-analyze mobile-test mobile-build
+.PHONY: install lint typecheck test build mobile-analyze mobile-test mobile-build infra-up infra-down infra-test-up infra-test-down
 
 install:
 	npm install
@@ -23,3 +23,15 @@ mobile-test:
 
 mobile-build:
 	npm run mobile:build
+
+infra-up:
+	npm run infra:up
+
+infra-down:
+	npm run infra:down
+
+infra-test-up:
+	npm run infra:test:up
+
+infra-test-down:
+	npm run infra:test:down
