@@ -1,0 +1,100 @@
+openapi: 3.1.0
+info:
+  title: Luvin API
+  version: 0.0.0
+servers:
+  - url: /v1
+paths:
+  /health/live:
+    get:
+      summary: Process liveness
+      operationId: getHealthLive
+      responses:
+        "200":
+          description: Process is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthLiveResponse"
+  /health/ready:
+    get:
+      summary: Dependency readiness
+      operationId: getHealthReady
+      responses:
+        "200":
+          description: Required dependencies are reachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+        "503":
+          description: One or more required dependencies are not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+components:
+  schemas:
+    SuccessMeta:
+      type: object
+      required: [requestId]
+      properties:
+        requestId:
+          type: string
+    HealthLiveResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [status]
+          properties:
+            status:
+              type: string
+              enum: [live]
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    HealthReadyResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [status, checks]
+          properties:
+            status:
+              type: string
+              enum: [ready, not_ready]
+            checks:
+              type: object
+              required: [postgres, redis, objectStorage]
+              properties:
+                postgres:
+                  type: string
+                  enum: [up, down, skipped]
+                redis:
+                  type: string
+                  enum: [up, down, skipped]
+                objectStorage:
+                  type: string
+                  enum: [up, down, skipped]
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    ApiErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, fields, requestId]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            fields:
+              type: object
+              additionalProperties:
+                type: string
+            requestId:
+              type: string

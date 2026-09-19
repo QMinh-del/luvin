@@ -8,7 +8,7 @@
     "start:dev": "nest start --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --import tsx --test src/app.bootstrap.spec.ts src/infra/local-services-config.spec.ts",
+    "test": "node --import tsx --test --test-concurrency=1 --test-force-exit src/app.bootstrap.spec.ts src/config/app-config.spec.ts src/infra/local-services-config.spec.ts src/observability/redact.spec.ts src/observability/request-tracing.spec.ts src/observability/api-exception.filter.spec.ts src/health/health.http.spec.ts src/mail/mail-observability.spec.ts",
     "test:infra": "prisma generate && node --import tsx --test src/infra/local-services-connectivity.integration.spec.ts",
     "prisma:generate": "prisma generate"
   },

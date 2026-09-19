@@ -1,0 +1,16 @@
+displayName: Luvin API readiness failed
+documentation:
+  content: Alert when GET /v1/health/ready is not successful. Investigate process and dependency health. Do not include request bodies, tokens, coordinates, or message text in notification content.
+  mimeType: text/markdown
+conditions:
+  - displayName: Health ready check failing
+    conditionThreshold:
+      filter: resource.type="uptime_url" AND metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND metric.labels.check_id="luvin-api-health-ready"
+      comparison: COMPARISON_LT
+      thresholdValue: 1
+      duration: 60s
+      trigger:
+        count: 1
+combiner: OR
+enabled: true
+notificationChannels: []

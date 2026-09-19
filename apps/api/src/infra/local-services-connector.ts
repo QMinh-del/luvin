@@ -21,10 +21,14 @@ export class LocalServicesConnector {
     private readonly config: LocalServicesConfig,
   ) {}
 
+  async verifyObjectStorage(): Promise<void> {
+    await this.verifyMinioPrivateBuckets();
+  }
+
   async verify(): Promise<LocalServicesStatus> {
     await this.verifyPostgres();
     await this.verifyRedis();
-    await this.verifyMinioPrivateBuckets();
+    await this.verifyObjectStorage();
     return {
       postgres: true,
       redis: true,

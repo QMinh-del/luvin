@@ -1,0 +1,25 @@
+uptimeChecks:
+  - displayName: luvin-api-health-ready
+    monitoredResource:
+      type: uptime_url
+      labels:
+        project_id: "${GOOGLE_CLOUD_PROJECT}"
+        host: "${API_HOST}"
+    httpCheck:
+      path: /v1/health/ready
+      port: 443
+      useSsl: true
+      validateSsl: true
+      requestMethod: GET
+    timeout: 10s
+    period: 60s
+    contentMatchers: []
+logBasedMetrics:
+  - name: luvin-api-errors
+    filter: 'resource.type="cloud_run_revision" jsonPayload.service="luvin-api" jsonPayload.severity="ERROR"'
+    metricDescriptor:
+      valueType: INT64
+      metricKind: DELTA
+errorReporting:
+  service: luvin-api
+  notes: Errors are reported from structured JSON logs with the Error Reporting @type. Do not attach request bodies, tokens, coordinates, or message text.

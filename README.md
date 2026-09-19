@@ -71,6 +71,17 @@ Development data uses persistent volumes and database `luvin_local`. Test data u
 
 Copy `.env.example` to `.env` locally. Do not commit `.env`.
 
+## Configuration and health
+
+Startup validates `LUVIN_ENV` and required variables. Invalid configuration exits before the HTTP server listens and does not print secret values.
+
+- `GET /v1/health/live` — process liveness
+- `GET /v1/health/ready` — PostgreSQL, Redis, and local object-storage readiness (`503` when a required check is down)
+
+Logs are JSON with a request ID from `X-Request-ID` when it matches the allowed pattern. Passwords, tokens, keys, signed URLs, message text, coordinates, date of birth, report text, and moderation evidence are redacted.
+
+Transactional email uses Resend sandbox credentials only in `local`, `test`, and `development`. Production password recovery stays disabled until `TASK-A08` verifies a sender domain. Google Cloud alert and uptime configuration lives in `infrastructure/gcp/`. `npm run observability:apply` exits without changing cloud resources when `GOOGLE_CLOUD_PROJECT` is missing.
+
 ## CI
 
 GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. Jobs are named by application and command. The workflow uses `contents: read` and the protected `ci` environment. Do not store long-lived production credentials in Actions.

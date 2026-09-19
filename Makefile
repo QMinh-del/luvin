@@ -1,4 +1,4 @@
-.PHONY: install lint format format-check typecheck test build mobile-analyze mobile-test mobile-build infra-up infra-down infra-test-up infra-test-down
+.PHONY: install lint format format-check typecheck test build mobile-analyze mobile-test mobile-build infra-up infra-down infra-test-up infra-test-down observability-apply
 
 install:
 	npm install
@@ -41,3 +41,6 @@ infra-test-up:
 
 infra-test-down:
 	npm run infra:test:down
+
+observability-apply:
+	npm run observability:apply

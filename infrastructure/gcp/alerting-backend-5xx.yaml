@@ -1,0 +1,19 @@
+displayName: Luvin API backend 5xx
+documentation:
+  content: Alert on elevated 5xx responses from luvin-api. Notification text must not include private payloads.
+  mimeType: text/markdown
+conditions:
+  - displayName: API 5xx rate
+    conditionThreshold:
+      filter: resource.type="cloud_run_revision" AND resource.labels.service_name="luvin-api" AND metric.type="run.googleapis.com/request_count" AND metric.labels.response_code_class="5xx"
+      comparison: COMPARISON_GT
+      thresholdValue: 0
+      duration: 300s
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_RATE
+      trigger:
+        count: 1
+combiner: OR
+enabled: true
+notificationChannels: []
