@@ -838,3 +838,45 @@ test(
     await app.close();
   },
 );
+
+test(
+  "password-reset and email-change brute force return 429",
+  { skip: !shouldRun },
+  async () => {
+    const { app, prisma } = await createApp({
+      ...TEST_ENV,
+      AUTH_RATE_LIMIT_PASSWORD_RESET_MAX: "2",
+      AUTH_TURNSTILE_PASSWORD_RESET_AFTER: "9",
+      AUTH_RATE_LIMIT_EMAIL_CHANGE_MAX: "2",
+    });
+    const port = await listen(app);
+    const registered = await registerAccount(port, prisma);
+    const reset = async () =>
+      fetch(`${origin(port)}/v1/auth/password-reset/request`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: registered.email }),
+      });
+    assert.equal((await reset()).status, 202);
+    assert.equal((await reset()).status, 202);
+    const resetLimited = await reset();
+    assert.equal(resetLimited.status, 429);
+    const change = async () =>
+      fetch(`${origin(port)}/v1/account/email-change/request`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${registered.body.accessToken}`,
+        },
+        body: JSON.stringify({
+          email: `chg_${registered.suffix}@example.test`,
+          password: registered.password,
+        }),
+      });
+    assert.equal((await change()).status, 202);
+    assert.equal((await change()).status, 202);
+    const changeLimited = await change();
+    assert.equal(changeLimited.status, 429);
+    await app.close();
+  },
+);
