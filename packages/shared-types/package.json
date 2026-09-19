@@ -6,6 +6,7 @@
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
+    "prepare": "npm run build",
     "lint": "echo \"lint skipped until eslint config in api\"",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test src/index.spec.ts",
