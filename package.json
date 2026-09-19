@@ -17,8 +17,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "mobile:analyze": "flutter analyze --cwd apps/mobile",
-    "mobile:test": "flutter test --cwd apps/mobile",
-    "mobile:build": "flutter build apk --debug --cwd apps/mobile"
+    "mobile:analyze": "cd apps/mobile && flutter analyze",
+    "mobile:test": "cd apps/mobile && flutter test",
+    "mobile:build": "cd apps/mobile && flutter build apk --debug"
   }
 }
