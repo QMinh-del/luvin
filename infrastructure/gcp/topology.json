@@ -1,0 +1,50 @@
+{
+  "task": "TASK-B05",
+  "productionRegion": null,
+  "regionSelectionStatus": "blocked_pending_benchmarks",
+  "candidateRegions": [
+    { "id": "asia-southeast1", "city": "Singapore" },
+    { "id": "asia-east1", "city": "Taiwan" },
+    { "id": "asia-northeast1", "city": "Tokyo" }
+  ],
+  "projects": {
+    "development": "${LUVIN_GCP_PROJECT_DEVELOPMENT}",
+    "staging": "${LUVIN_GCP_PROJECT_STAGING}",
+    "production": "${LUVIN_GCP_PROJECT_PRODUCTION}"
+  },
+  "budgetCapUsd": 50,
+  "estimate": {
+    "currency": "USD",
+    "period": "month",
+    "source": "Google Cloud public list prices retrieved 2026-09-19",
+    "notes": [
+      "Memorystore for Redis Basic M1 is $0.049 per GiB-hour. One GiB for 730 hours is about $35.77 before regional multipliers, backups, or egress.",
+      "Cloud SQL and Cloud Run are additional. This floor already consumes most of the $50 cap.",
+      "Region latency and Asia list-price deltas are not measured in this task."
+    ],
+    "lineItemsUsd": [
+      {
+        "service": "Memorystore Redis Basic 1 GiB",
+        "basis": "0.049 USD per GiB-hour * 730 hours",
+        "amount": 35.77
+      },
+      {
+        "service": "Cloud SQL PostgreSQL shared-core plus 10 GB disk (non-HA, US-list proxy)",
+        "basis": "Public calculator-class shared-core instances are commonly about 10 USD/month in us-central1; Asia regions may cost more. Used as a lower bound, not a quote.",
+        "amount": 10.0
+      },
+      {
+        "service": "Cloud Run API plus realtime (min instances 0)",
+        "basis": "Request/CPU/memory pricing; not a substitute for a production-equivalent load run.",
+        "amount": 5.0
+      }
+    ],
+    "subtotalUsd": 50.77,
+    "exceedsApprovedCap": true,
+    "provisioningBlocked": true
+  },
+  "rpoHours": 24,
+  "rtoHours": 4,
+  "backupRetentionDays": 30,
+  "availabilityTarget": 0.995
+}

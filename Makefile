@@ -1,4 +1,4 @@
-.PHONY: install lint format format-check typecheck test build mobile-analyze mobile-test mobile-build infra-up infra-down infra-test-up infra-test-down observability-apply
+.PHONY: install lint format format-check typecheck test build mobile-analyze mobile-test mobile-build infra-up infra-down infra-test-up infra-test-down observability-apply gcp-provision
 
 install:
 	npm install
@@ -44,3 +44,6 @@ infra-test-down:
 
 observability-apply:
 	npm run observability:apply
+
+gcp-provision:
+	npm run gcp:provision

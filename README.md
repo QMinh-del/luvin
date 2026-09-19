@@ -82,6 +82,8 @@ Logs are JSON with a request ID from `X-Request-ID` when it matches the allowed 
 
 Transactional email uses Resend sandbox credentials only in `local`, `test`, and `development`. Production password recovery stays disabled until `TASK-A08` verifies a sender domain. Google Cloud alert and uptime configuration lives in `infrastructure/gcp/`. `npm run observability:apply` exits without changing cloud resources when `GOOGLE_CLOUD_PROJECT` is missing.
 
+Production topology is defined in `infrastructure/gcp/topology.md`. Region benchmarks are not done. `npm run gcp:provision` stays blocked while the published-price floor exceeds the USD 50 monthly cap.
+
 ## CI
 
 GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. Jobs are named by application and command. The workflow uses `contents: read` and the protected `ci` environment. Do not store long-lived production credentials in Actions.
