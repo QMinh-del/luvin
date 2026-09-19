@@ -56,7 +56,17 @@ Makefile equivalents: `make install`, `make lint`, `make format-check`, `make ty
 
 ## Database and local services
 
-Prisma is initialized without product tables. Migrations arrive in TASK-C01.
+The MVP schema lives in `apps/api/prisma/schema.prisma`. Apply and seed against a running Postgres:
+
+```text
+npm run infra:test:up
+$env:DATABASE_URL="postgresql://luvin:luvin@127.0.0.1:5433/luvin_test?schema=public"
+npm run prisma:migrate
+npm run prisma:seed
+$env:RUN_INFRA_TESTS="1"; npm run infra:verify
+```
+
+Seed data is synthetic (`@example.test`) and contains no real personal information.
 
 Pinned local images: PostgreSQL 16.15 (`postgres:16-alpine` digest `3c5c8892…`), Redis 7.4 (`redis:7.4-alpine` digest `520775a4…`), MinIO and `mc` from `quay.io` (digests in `infrastructure/docker/compose.yaml`). Docker Hub `minio/mc` is not used because pulls are denied.
 

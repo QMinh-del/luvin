@@ -28,6 +28,8 @@
     "infra:test:up": "docker compose -f infrastructure/docker/compose.test.yaml up -d --wait",
     "infra:test:down": "docker compose -f infrastructure/docker/compose.test.yaml down -v",
     "infra:verify": "npm run test:infra --workspace=@luvin/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace=@luvin/api",
+    "prisma:seed": "npm run prisma:seed --workspace=@luvin/api",
     "observability:apply": "node infrastructure/gcp/apply-observability.mjs",
     "gcp:provision": "node infrastructure/gcp/provision.mjs"
   },
