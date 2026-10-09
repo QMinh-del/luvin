@@ -12,6 +12,7 @@ concurrency:
 
 permissions:
   contents: read
+# Lockfile caches only. These jobs receive no production secrets.
 
 jobs:
   backend:
@@ -39,9 +40,23 @@ jobs:
         run: npm run test
 
   prisma:
-    name: Prisma schema validation
+    name: Prisma migration validation
     runs-on: ubuntu-latest
     environment: ci
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:3c5c8892d184f738f4fe282d14ddaa613a38f00f4189d2d94725ebe6f2909ddb
+        env:
+          POSTGRES_USER: luvin
+          POSTGRES_PASSWORD: luvin
+          POSTGRES_DB: luvin_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U luvin -d luvin_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,11 +65,11 @@ jobs:
           cache: npm
       - name: Install JavaScript workspaces
         run: npm ci
-      - name: Validate Prisma schema (@luvin/api)
+      - name: Apply migrations to an empty database (@luvin/api)
         working-directory: apps/api
         env:
-          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
-        run: npx prisma validate
+          DATABASE_URL: postgresql://luvin:luvin@127.0.0.1:5432/luvin_ci?schema=public
+        run: npx prisma migrate deploy && npx prisma migrate status
 
   api-integration:
     name: API local-infrastructure integration tests

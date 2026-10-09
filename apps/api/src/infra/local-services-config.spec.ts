@@ -46,3 +46,62 @@ test("rejects production-like LUVIN_ENV for local infrastructure", () => {
     /LUVIN_ENV must be local or test/,
   );
 });
+
+test("rejects unsupported or ambiguous MinIO endpoints", () => {
+  const baseEnv: NodeJS.ProcessEnv = {
+    LUVIN_ENV: "local",
+    DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5432/luvin_local",
+    REDIS_URL: "redis://127.0.0.1:6379",
+    MINIO_ACCESS_KEY: "luvin",
+    MINIO_SECRET_KEY: "luvinminio",
+  };
+
+  assert.throws(
+    () =>
+      readLocalServicesConfig({
+        ...baseEnv,
+        MINIO_ENDPOINT: "ftp://127.0.0.1:9000",
+      }),
+    /MINIO_ENDPOINT must use http or https/,
+  );
+  assert.throws(
+    () =>
+      readLocalServicesConfig({
+        ...baseEnv,
+        MINIO_ENDPOINT: "http://127.0.0.1:9000/private?list=true",
+      }),
+    /MINIO_ENDPOINT must not include credentials, a path, query, or fragment/,
+  );
+});
+
+test("rejects bucket names from the other local environment", () => {
+  assert.throws(
+    () =>
+      readLocalServicesConfig({
+        LUVIN_ENV: "test",
+        DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5433/luvin_test",
+        REDIS_URL: "redis://127.0.0.1:6380",
+        MINIO_ENDPOINT: "127.0.0.1:9100",
+        MINIO_ACCESS_KEY: "luvin",
+        MINIO_SECRET_KEY: "luvinminio",
+        MINIO_AVATAR_BUCKET: "luvin-local-avatars",
+        MINIO_EXPORT_BUCKET: "luvin-local-exports",
+      }),
+    /MinIO bucket names must match the isolated test environment/,
+  );
+});
+
+test("rejects service URLs from the other local environment", () => {
+  assert.throws(
+    () =>
+      readLocalServicesConfig({
+        LUVIN_ENV: "local",
+        DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5433/luvin_test",
+        REDIS_URL: "redis://127.0.0.1:6380",
+        MINIO_ENDPOINT: "127.0.0.1:9100",
+        MINIO_ACCESS_KEY: "luvin",
+        MINIO_SECRET_KEY: "luvinminio",
+      }),
+    /Local service URLs must match the isolated local environment/,
+  );
+});

@@ -39,3 +39,27 @@ export type AuthSessionData = {
   accountState: string;
   requiredLegalActions: Array<"ACCEPT_TERMS" | "ACCEPT_PRIVACY">;
 };
+
+export type PairingCodeIssue = {
+  code: string;
+  expiresAt: string;
+};
+
+export type PairingCodeStatus = {
+  active: boolean;
+  expiresAt: string | null;
+};
+
+export type CouplePartner = {
+  userId: string;
+  username: string;
+  displayName: string;
+  membershipState: "INVITED" | "ACTIVE" | "LEFT";
+};
+
+export type CoupleData = {
+  connectionId: string;
+  state: "PENDING" | "ACTIVE" | "DISCONNECTED" | "DELETED";
+  invitationId: string | null;
+  partners: CouplePartner[];
+};

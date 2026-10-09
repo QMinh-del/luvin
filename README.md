@@ -16,17 +16,30 @@ Mobile fallback locale: `en` (`LUVIN_FALLBACK_LOCALE` in `.env.example`).
 
 Android package ID: `com.luvin.app`.
 
+## Android signing
+
+Debug APKs use the standard local debug key. A release build never falls back
+to that key: it requires `apps/mobile/android/key.properties`, which is ignored
+by Git. Copy `apps/mobile/android/key.properties.example`, generate or obtain a
+private Android upload keystore outside this repository, and fill in its local
+path and passwords. Never commit the keystore or `key.properties`.
+
+Firebase's Android configuration is also machine/environment local:
+`apps/mobile/android/app/google-services.json` is ignored and must be supplied
+through the approved private setup process. Never commit it.
+
 ## Folder ownership
 
-| Path                      | GitHub team                         |
-| ------------------------- | ----------------------------------- |
-| Repository default (`*`)  | `@luvin/maintainers`                |
-| `/apps/api/`              | `@luvin/backend-maintainers`        |
-| `/apps/mobile/`           | `@luvin/mobile-maintainers`         |
-| `/packages/shared-types/` | `@luvin/contract-maintainers`       |
-| `/infrastructure/`        | `@luvin/infrastructure-maintainers` |
+| Path                      | GitHub team |
+| ------------------------- | ----------- |
+| Repository default (`*`)  | `@kendayyy` |
+| `/apps/api/`              | `@kendayyy` |
+| `/apps/mobile/`           | `@kendayyy` |
+| `/packages/shared-types/` | `@kendayyy` |
+| `/infrastructure/`        | `@kendayyy` |
 
-See [`CODEOWNERS`](CODEOWNERS) for the authoritative mapping. Replace placeholder team handles before enabling branch protection on the private remote.
+See [`CODEOWNERS`](CODEOWNERS) for the authoritative mapping. Ownership may be
+split into organization teams later without changing application behavior.
 
 ## Roles and branching
 
@@ -63,7 +76,7 @@ npm run infra:test:up
 $env:DATABASE_URL="postgresql://luvin:luvin@127.0.0.1:5433/luvin_test?schema=public"
 npm run prisma:migrate
 npm run prisma:seed
-$env:RUN_INFRA_TESTS="1"; npm run infra:verify
+npm run infra:verify
 ```
 
 Seed data is synthetic (`@example.test`) and contains no real personal information.
@@ -77,9 +90,69 @@ npm run infra:test:up
 npm run infra:test:down
 ```
 
-Development data uses persistent volumes and database `luvin_local`. Test data uses tmpfs, port offsets, database `luvin_test`, and `luvin-test-*` buckets. See `infrastructure/docker/README.md`.
+Development data uses persistent volumes and database `luvin_local`. Test data uses tmpfs, port offsets, database `luvin_test`, and `luvin-test-*` buckets. All published infrastructure ports bind to `127.0.0.1`, not the LAN. See `infrastructure/docker/README.md`.
 
 Copy `.env.example` to `.env` locally. Do not commit `.env`.
+
+Prepare all local dependencies, apply database migrations, and seed synthetic data:
+
+```text
+npm run local:prepare
+```
+
+Then start the API with the root `.env` loaded by Node:
+
+```text
+npm run api:start:local
+```
+
+Verify each stack independently. The checks use fixed synthetic local or test
+service settings so inherited shell variables cannot cross the isolation
+boundary. Keep service URLs and bucket names in a private `.env` aligned with
+the selected `LUVIN_ENV` or application startup fails closed:
+
+```text
+npm run infra:up
+npm run infra:verify:local
+npm run infra:down
+
+npm run infra:test:up
+npm run infra:verify
+npm run infra:test:down
+```
+
+## Botkeep
+
+The API process is one NestJS server. REST and the WebSocket share it. Botkeep does not run Google Cloud Storage, so avatars and exports use a private directory on Botkeep's persistent disk and short-lived signed URLs served by the API.
+
+In the Botkeep panel:
+
+- Runtime: Node.js 24
+- Project root: the repository root, where `package.json` and `package-lock.json` are
+- Start command: `npm start`
+- HTTP: the process listens on `0.0.0.0` and `SERVER_PORT`
+- Slots: this API, plus one PostgreSQL and one Redis. Point both connection strings at those slots.
+
+Environment values belong in the panel, not in git:
+
+```text
+NPM_CONFIG_PRODUCTION=false
+NODE_ENV=production
+LUVIN_ENV=production
+OBJECT_STORAGE_BACKEND=filesystem
+OBJECT_STORAGE_ROOT=/app/data/objects
+PUBLIC_BASE_URL=https://your-domain
+DATABASE_URL=postgresql://...
+DATABASE_SSL_CA=-----BEGIN CERTIFICATE-----...
+REDIS_URL=rediss://...
+REDIS_SSL_CA=-----BEGIN CERTIFICATE-----...
+ACCESS_TOKEN_SECRET=at-least-32-characters
+PASSWORD_RECOVERY_ENABLED=false
+```
+
+`npm start` builds the API, applies Prisma migrations, then stays on the server process. A restart receives `SIGTERM` and closes Redis and PostgreSQL. Leave `GOOGLE_CLOUD_PROJECT` unset when object storage is `filesystem`. Password recovery stays off until a verified Resend domain exists. Do not seed real accounts from this command.
+
+Local MinIO and the Google Cloud topology are unchanged. `npm run api:start:local` is still the local API.
 
 ## Configuration and health
 
@@ -96,7 +169,9 @@ Production topology is defined in `infrastructure/gcp/topology.md`. Region bench
 
 ## CI
 
-GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. Jobs are named by application and command. The workflow uses `contents: read` and the protected `ci` environment. Do not store long-lived production credentials in Actions.
+GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. Each job name identifies the application and command. The workflow grants `contents: read`. npm and Flutter caches are keyed from lockfiles and receive no production secrets. The `ci` environment exists for future protected secrets and currently stores none.
+
+The Prisma job applies every migration to an empty PostgreSQL 16 database, then checks migration status.
 
 Local equivalents:
 
@@ -105,16 +180,18 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm run test
-npx prisma validate --schema apps/api/prisma/schema.prisma
-# Prisma validate requires DATABASE_URL in the environment. Use a non-secret placeholder; it does not connect.
+npm run infra:test:up
+npm run infra:verify
 npm run mobile:analyze
 npm run mobile:test
 npm audit --audit-level=critical
 ```
 
-Require these status checks on `main` before merge: Backend lint, typecheck, and tests; Prisma schema validation; API local-infrastructure integration tests; Flutter analyze and tests; Secret scan; Dependency audit.
+Required status checks before merge, once repository rules are available: Backend lint, typecheck, and tests; Prisma migration validation; API local-infrastructure integration tests; Flutter analyze and tests; Secret scan; Dependency audit.
 
-Pinned Flutter/Dart (`3.47.5` / `3.13.4`) does not include `dart pub audit`. Dependency audit in CI is `npm audit --audit-level=critical` plus a remaining-findings report. Residual high/moderate npm findings are not treated as merge blockers in this task.
+Owner decision 2026-09-27, option B: `https://github.com/kendayyy/luvin` is public so GitHub Free can enforce required checks. Active ruleset `24047600` blocks updates to `main` unless these checks pass: Backend lint, typecheck, and tests; Prisma schema validation; API local-infrastructure integration tests; Flutter analyze and tests; Secret scan; Dependency audit. There are no bypass actors. The published workflow still names the Prisma job `Prisma schema validation`.
+
+Pinned Flutter/Dart (`3.47.5` / `3.13.4`) does not include `dart pub audit`. Dependency audit in CI is `npm audit --audit-level=critical` plus a remaining-findings report. Residual high/moderate npm findings are not merge blockers in this task.
 
 ## Product scope (TASK-B01)
 

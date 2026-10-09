@@ -13,27 +13,42 @@
     "packages/shared-types"
   ],
   "scripts": {
+    "postinstall": "npm run prisma:generate --workspace=@luvin/api",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present && npm run test:gcp",
+    "test": "npm run test --workspaces --if-present && npm run test:docker && npm run test:gcp",
+    "test:docker": "node --test infrastructure/docker/compose.spec.mjs",
     "test:gcp": "node --test infrastructure/gcp/topology.spec.mjs",
     "build": "npm run build --workspaces --if-present",
+    "start": "node scripts/botkeep-start.mjs",
     "mobile:analyze": "cd apps/mobile && flutter analyze",
     "mobile:test": "cd apps/mobile && flutter test",
     "mobile:build": "cd apps/mobile && flutter build apk --debug",
-    "infra:up": "docker compose -f infrastructure/docker/compose.yaml up -d --wait",
-    "infra:down": "docker compose -f infrastructure/docker/compose.yaml down",
-    "infra:test:up": "docker compose -f infrastructure/docker/compose.test.yaml up -d --wait",
-    "infra:test:down": "docker compose -f infrastructure/docker/compose.test.yaml down -v",
-    "infra:verify": "npm run test:infra --workspace=@luvin/api",
+    "api:start:local": "npm run start:local --workspace=@luvin/api",
+    "infra:up": "node scripts/docker-compose.mjs -p luvin-local -f infrastructure/docker/compose.yaml up -d --wait",
+    "infra:down": "node scripts/docker-compose.mjs -p luvin-local -f infrastructure/docker/compose.yaml down",
+    "infra:test:up": "node scripts/docker-compose.mjs -p luvin-test -f infrastructure/docker/compose.test.yaml up -d --wait",
+    "infra:test:down": "node scripts/docker-compose.mjs -p luvin-test -f infrastructure/docker/compose.test.yaml down -v",
+    "infra:verify": "npm run test:infra:b02 --workspace=@luvin/api",
+    "infra:verify:local": "npm run test:infra:b02:local --workspace=@luvin/api",
     "prisma:migrate": "npm run prisma:migrate --workspace=@luvin/api",
     "prisma:seed": "npm run prisma:seed --workspace=@luvin/api",
+    "prisma:migrate:local": "npm run prisma:migrate:local --workspace=@luvin/api",
+    "prisma:seed:local": "npm run prisma:seed:local --workspace=@luvin/api",
+    "local:prepare": "npm run infra:up && npm run prisma:migrate:local && npm run prisma:seed:local",
     "observability:apply": "node infrastructure/gcp/apply-observability.mjs",
     "gcp:provision": "node infrastructure/gcp/provision.mjs"
   },
   "devDependencies": {
     "prettier": "^3.6.2"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "argon2@0.41.1": true,
+    "esbuild@0.28.2": true,
+    "prisma@6.19.3": true
   }
 }

@@ -8,12 +8,20 @@ import { APP_FILTER } from "@nestjs/core";
 import { readAppConfig } from "./config/app-config";
 import { APP_CONFIG } from "./config/app-config.token";
 import { AccountController } from "./account/account.controller";
+import { ChatController } from "./chat/chat.controller";
+import { ChatService } from "./chat/chat.service";
+import { CoupleController } from "./couple/couple.controller";
+import { CoupleService } from "./couple/couple.service";
+import { LocationController } from "./location/location.controller";
+import { LocationService } from "./location/location.service";
+import { RealtimeHub } from "./realtime/realtime.hub";
+import { SocialController } from "./social/social.controller";
+import { SocialService } from "./social/social.service";
 import { AccessAuthGuard } from "./auth/access.guard";
 import { AuthController } from "./auth/auth.controller";
 import { AuthService } from "./auth/auth.service";
 import { RateLimitService } from "./auth/rate-limit.service";
 import { TokenService } from "./auth/token.service";
-import { TurnstileService } from "./auth/turnstile.service";
 import { HealthController } from "./health/health.controller";
 import { HealthService } from "./health/health.service";
 import { PrismaService } from "./prisma/prisma.service";
@@ -31,6 +39,10 @@ import { MAIL_SINK, MailSender, createMailSink } from "./mail/mail-sender";
 import { ApiExceptionFilter } from "./observability/api-exception.filter";
 import { RequestTracingMiddleware } from "./observability/request-id";
 import { StructuredLogger } from "./observability/structured-logger";
+import { createObjectStorage } from "./storage/create-object-storage";
+import { MediaController } from "./storage/media.controller";
+import { OBJECT_STORAGE } from "./storage/object-storage.port";
+import { ObjectStorageService } from "./storage/object-storage.service";
 
 @Module({})
 export class AppModule implements NestModule {
@@ -48,7 +60,16 @@ export class AppModule implements NestModule {
 
     return {
       module: AppModule,
-      controllers: [HealthController, AuthController, AccountController],
+      controllers: [
+        HealthController,
+        MediaController,
+        AuthController,
+        AccountController,
+        CoupleController,
+        ChatController,
+        LocationController,
+        SocialController,
+      ],
       providers: [
         { provide: APP_CONFIG, useValue: config },
         StructuredLogger,
@@ -68,10 +89,20 @@ export class AppModule implements NestModule {
         },
         TokenService,
         RateLimitService,
-        TurnstileService,
         MailSender,
         AuthService,
         AccessAuthGuard,
+        CoupleService,
+        ChatService,
+        LocationService,
+        RealtimeHub,
+        SocialService,
+        {
+          provide: OBJECT_STORAGE,
+          inject: [APP_CONFIG],
+          useFactory: createObjectStorage,
+        },
+        ObjectStorageService,
         {
           provide: APP_FILTER,
           inject: [StructuredLogger],

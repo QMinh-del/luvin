@@ -15,11 +15,6 @@ enum AccountState {
   DELETED
 }
 
-enum ConnectionType {
-  COUPLE
-  GROUP
-}
-
 enum ConnectionState {
   PENDING
   ACTIVE
@@ -27,17 +22,10 @@ enum ConnectionState {
   DELETED
 }
 
-enum MembershipRole {
-  OWNER
-  ADMIN
-  MEMBER
-}
-
-enum MembershipState {
+enum CouplePartnerState {
   INVITED
   ACTIVE
   LEFT
-  REMOVED
 }
 
 enum LocationMode {
@@ -52,11 +40,6 @@ enum LocationRetention {
   ONE_DAY
   SEVEN_DAYS
   THIRTY_DAYS
-}
-
-enum ConversationType {
-  COUPLE
-  GROUP
 }
 
 enum MessageState {
@@ -149,9 +132,8 @@ model User {
   sessions                Session[]
   passwordResetTokens     PasswordResetToken[]
   legalConsents           UserLegalConsent[]
-  connectionsCreated      Connection[]              @relation("ConnectionCreator")
-  memberships             ConnectionMember[]        @relation("MembershipUser")
-  membershipsInvited      ConnectionMember[]        @relation("MembershipInviter")
+  connectionsRequested    Connection[]              @relation("ConnectionRequester")
+  partners                ConnectionPartner[]       @relation("ConnectionPartnerUser")
   blocksCreated           UserBlock[]               @relation("Blocker")
   blocksReceived          UserBlock[]               @relation("Blocked")
   locationGrantsOwned     LocationViewerGrant[]     @relation("GrantOwner")
@@ -176,6 +158,7 @@ model User {
   dataExports             DataExport[]
   auditLogs               AuditLog[]
   idempotencyRecords      IdempotencyRecord[]
+  pairingCodes            PairingCode[]
 
   @@index([accountState, deletionExecuteAt])
   @@map("users")
@@ -296,52 +279,63 @@ model UserLegalConsent {
 }
 
 model Connection {
-  id              String           @id @db.Uuid
-  type            ConnectionType
-  state           ConnectionState
-  name            String?          @db.VarChar(80)
-  createdByUserId String           @map("created_by_user_id") @db.Uuid
-  activatedAt     DateTime?        @map("activated_at") @db.Timestamptz(6)
-  disconnectedAt  DateTime?        @map("disconnected_at") @db.Timestamptz(6)
-  deletedAt       DateTime?        @map("deleted_at") @db.Timestamptz(6)
-  createdAt       DateTime         @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime         @map("updated_at") @db.Timestamptz(6)
+  id                String          @id @db.Uuid
+  state             ConnectionState
+  requestedByUserId String          @map("requested_by_user_id") @db.Uuid
+  activatedAt       DateTime?       @map("activated_at") @db.Timestamptz(6)
+  disconnectedAt    DateTime?       @map("disconnected_at") @db.Timestamptz(6)
+  deletedAt         DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime        @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @map("updated_at") @db.Timestamptz(6)
 
-  createdBy     User                   @relation("ConnectionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  members       ConnectionMember[]
+  requestedBy    User                   @relation("ConnectionRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  partners       ConnectionPartner[]
   locationGrants LocationViewerGrant[]
-  locations     Location[]
-  conversation  Conversation?
-  lovePings     LovePing[]
-  auditLogs     AuditLog[]
+  locations      Location[]
+  conversation   Conversation?
+  lovePings      LovePing[]
+  auditLogs      AuditLog[]
+  pairingCodes   PairingCode[]
 
-  @@index([type, state])
-  @@index([createdByUserId, state])
+  @@index([requestedByUserId, state])
   @@map("connections")
 }
 
-model ConnectionMember {
-  id              String           @id @db.Uuid
-  connectionId    String           @map("connection_id") @db.Uuid
-  userId          String           @map("user_id") @db.Uuid
-  role            MembershipRole   @default(MEMBER)
-  state           MembershipState
-  invitedByUserId String?          @map("invited_by_user_id") @db.Uuid
-  invitedAt       DateTime?        @map("invited_at") @db.Timestamptz(6)
-  joinedAt        DateTime?        @map("joined_at") @db.Timestamptz(6)
-  leftAt          DateTime?        @map("left_at") @db.Timestamptz(6)
-  removedAt       DateTime?        @map("removed_at") @db.Timestamptz(6)
-  createdAt       DateTime         @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime         @map("updated_at") @db.Timestamptz(6)
+model ConnectionPartner {
+  id           String             @id @db.Uuid
+  connectionId String             @map("connection_id") @db.Uuid
+  userId       String             @map("user_id") @db.Uuid
+  state        CouplePartnerState
+  invitedAt    DateTime?          @map("invited_at") @db.Timestamptz(6)
+  joinedAt     DateTime?          @map("joined_at") @db.Timestamptz(6)
+  leftAt       DateTime?          @map("left_at") @db.Timestamptz(6)
+  createdAt    DateTime           @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime           @map("updated_at") @db.Timestamptz(6)
 
   connection Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  user       User       @relation("MembershipUser", fields: [userId], references: [id], onDelete: Restrict)
-  invitedBy  User?      @relation("MembershipInviter", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  user       User       @relation("ConnectionPartnerUser", fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([connectionId, userId])
   @@index([userId, state])
-  @@index([connectionId, state, role])
-  @@map("connection_members")
+  @@index([connectionId, state])
+  @@map("connection_partners")
+}
+
+model PairingCode {
+  id           String    @id @db.Uuid
+  ownerUserId  String    @map("owner_user_id") @db.Uuid
+  codeHash     String    @unique @map("code_hash") @db.Char(64)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt   DateTime? @map("consumed_at") @db.Timestamptz(6)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
+  connectionId String?   @map("connection_id") @db.Uuid
+  createdAt    DateTime  @map("created_at") @db.Timestamptz(6)
+
+  owner      User        @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  connection Connection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, consumedAt, revokedAt])
+  @@map("pairing_codes")
 }
 
 model UserBlock {
@@ -431,11 +425,10 @@ model Location {
 }
 
 model Conversation {
-  id           String           @id @db.Uuid
-  connectionId String           @unique @map("connection_id") @db.Uuid
-  type         ConversationType
-  createdAt    DateTime         @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime         @map("updated_at") @db.Timestamptz(6)
+  id           String   @id @db.Uuid
+  connectionId String   @unique @map("connection_id") @db.Uuid
+  createdAt    DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @map("updated_at") @db.Timestamptz(6)
 
   connection Connection                 @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   messages   Message[]

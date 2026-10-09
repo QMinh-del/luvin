@@ -14,18 +14,14 @@ const CONFIG = readAppConfig({
   MINIO_ACCESS_KEY: "luvin",
   MINIO_SECRET_KEY: "luvinminio",
   ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
-  AUTH_RATE_LIMIT_REGISTER_MAX: "3",
-  AUTH_TURNSTILE_REGISTER_AFTER: "2",
+  AUTH_RATE_LIMIT_REGISTER_MAX: "10",
 });
 
-test("challenges after the configured threshold and then rate-limits", async () => {
+test("allows ten registration attempts and rate-limits the eleventh", async () => {
   const service = new RateLimitService(CONFIG, new MemoryCounterStore());
-  const first = await service.consume("register", "10.0.0.1");
-  assert.equal(first.challenged, false);
-  const second = await service.consume("register", "10.0.0.1");
-  assert.equal(second.challenged, true);
-  const third = await service.consume("register", "10.0.0.1");
-  assert.equal(third.challenged, true);
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await service.consume("register", "10.0.0.1");
+  }
   await assert.rejects(
     () => service.consume("register", "10.0.0.1"),
     (error: unknown) =>

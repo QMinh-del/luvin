@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:luvin/app_router.dart';
+import 'package:luvin/core/theme/luvin_theme.dart';
+import 'package:luvin/features/session/session_controller.dart';
 import 'package:luvin/l10n/app_localizations.dart';
 import 'package:luvin/locale_controller.dart';
 
 class LuvinApp extends StatelessWidget {
-  const LuvinApp({super.key, this.initialLocale});
+  const LuvinApp({super.key, this.initialLocale, this.overrides = const []});
 
   final Locale? initialLocale;
+  final List<Override> overrides;
 
   @override
   Widget build(BuildContext context) {
@@ -16,21 +20,44 @@ class LuvinApp extends StatelessWidget {
           localeProvider.overrideWith(
             () => LocaleController(initialLocale: initialLocale),
           ),
+        ...overrides,
       ],
       child: const LuvinMaterialApp(),
     );
   }
 }
 
-class LuvinMaterialApp extends ConsumerWidget {
+class LuvinMaterialApp extends ConsumerStatefulWidget {
   const LuvinMaterialApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final locale = ref.watch(localeProvider);
+  ConsumerState<LuvinMaterialApp> createState() => _LuvinMaterialAppState();
+}
 
-    return MaterialApp(
+class _LuvinMaterialAppState extends ConsumerState<LuvinMaterialApp> {
+  var _restored = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_restored) {
+        return;
+      }
+      _restored = true;
+      ref.read(sessionProvider.notifier).restore();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = ref.watch(localeProvider);
+    final router = ref.watch(routerProvider);
+
+    return MaterialApp.router(
       locale: locale,
+      theme: luvinTheme(brightness: Brightness.light),
+      darkTheme: luvinTheme(brightness: Brightness.dark),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       localeResolutionCallback: (deviceLocale, supported) {
@@ -44,43 +71,7 @@ class LuvinMaterialApp extends ConsumerWidget {
         return const Locale('en');
       },
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-      home: const LocaleShellPage(),
-    );
-  }
-}
-
-class LocaleShellPage extends ConsumerWidget {
-  const LocaleShellPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.appTitle)),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.shellHeadline),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => ref
-                  .read(localeProvider.notifier)
-                  .setLocale(const Locale('en')),
-              child: Text(l10n.languageEnglish),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () => ref
-                  .read(localeProvider.notifier)
-                  .setLocale(const Locale('vi')),
-              child: Text(l10n.languageVietnamese),
-            ),
-          ],
-        ),
-      ),
+      routerConfig: router,
     );
   }
 }

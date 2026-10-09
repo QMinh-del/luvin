@@ -4,11 +4,8 @@ import { randomUUID } from "node:crypto";
 import {
   PrismaClient,
   AccountState,
-  ConnectionType,
   ConnectionState,
-  MembershipRole,
-  MembershipState,
-  ConversationType,
+  CouplePartnerState,
 } from "@prisma/client";
 
 const shouldRun = process.env.RUN_INFRA_TESTS === "1";
@@ -45,19 +42,63 @@ async function createUser(username: string): Promise<string> {
   return id;
 }
 
+async function createCouple(
+  requesterId: string,
+  partnerId: string,
+  state: ConnectionState = ConnectionState.ACTIVE,
+): Promise<string> {
+  const connectionId = randomUUID();
+  await prisma.connection.create({
+    data: {
+      id: connectionId,
+      state,
+      requestedByUserId: requesterId,
+      activatedAt: state === ConnectionState.ACTIVE ? NOW : null,
+      createdAt: NOW,
+      updatedAt: NOW,
+      partners: {
+        create: [
+          {
+            id: randomUUID(),
+            userId: requesterId,
+            state: CouplePartnerState.ACTIVE,
+            joinedAt: NOW,
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+          {
+            id: randomUUID(),
+            userId: partnerId,
+            state:
+              state === ConnectionState.PENDING
+                ? CouplePartnerState.INVITED
+                : CouplePartnerState.ACTIVE,
+            invitedAt: NOW,
+            joinedAt: state === ConnectionState.ACTIVE ? NOW : null,
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        ],
+      },
+    },
+  });
+  return connectionId;
+}
+
 test(
-  "empty-database migration created required tables",
+  "empty-database migration created the couple-only tables",
   { skip: !shouldRun },
   async () => {
     const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
-    SELECT tablename FROM pg_tables WHERE schemaname = 'public'
-  `;
+      SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+    `;
     const names = tables.map((row) => row.tablename);
     for (const required of [
       "users",
       "profiles",
       "connections",
-      "connection_members",
+      "connection_partners",
+      "pairing_codes",
       "conversations",
       "messages",
       "locations",
@@ -65,180 +106,122 @@ test(
     ]) {
       assert.ok(names.includes(required), `missing ${required}`);
     }
+    assert.equal(names.includes("connection_members"), false);
+
+    const enums = await prisma.$queryRaw<Array<{ typname: string }>>`
+      SELECT typname FROM pg_type
+      WHERE typname IN (
+        'ConnectionType',
+        'MembershipRole',
+        'MembershipState',
+        'ConversationType',
+        'CouplePartnerState'
+      )
+    `;
+    const enumNames = enums.map((row) => row.typname);
+    assert.deepEqual(enumNames.sort(), ["CouplePartnerState"]);
   },
 );
 
 test(
-  "duplicate connection membership fails",
+  "duplicate connection partnership fails",
   { skip: !shouldRun },
   async () => {
     const owner = await createUser(`dup_owner_${randomUUID().slice(0, 8)}`);
     const member = await createUser(`dup_member_${randomUUID().slice(0, 8)}`);
-    const connectionId = randomUUID();
-    await prisma.connection.create({
-      data: {
-        id: connectionId,
-        type: ConnectionType.COUPLE,
-        state: ConnectionState.ACTIVE,
-        createdByUserId: owner,
-        createdAt: NOW,
-        updatedAt: NOW,
-        members: {
-          create: {
-            id: randomUUID(),
-            userId: member,
-            role: MembershipRole.MEMBER,
-            state: MembershipState.ACTIVE,
-            createdAt: NOW,
-            updatedAt: NOW,
-          },
-        },
-      },
-    });
+    const connectionId = await createCouple(owner, member);
     await assert.rejects(
       () =>
-        prisma.connectionMember.create({
+        prisma.connectionPartner.create({
           data: {
             id: randomUUID(),
             connectionId,
             userId: member,
-            role: MembershipRole.MEMBER,
-            state: MembershipState.ACTIVE,
+            state: CouplePartnerState.ACTIVE,
             createdAt: NOW,
             updatedAt: NOW,
           },
         }),
-      /Unique constraint/,
+      /Unique constraint|COUPLE_THIRD_PARTNER/,
     );
   },
 );
 
 test(
-  "eleventh group membership fails transactionally",
+  "a third couple partner fails transactionally",
   { skip: !shouldRun },
   async () => {
-    const owner = await createUser(`g_owner_${randomUUID().slice(0, 8)}`);
-    const connectionId = randomUUID();
-    await prisma.connection.create({
-      data: {
-        id: connectionId,
-        type: ConnectionType.GROUP,
-        state: ConnectionState.ACTIVE,
-        name: "capacity",
-        createdByUserId: owner,
-        createdAt: NOW,
-        updatedAt: NOW,
-      },
-    });
-    await prisma.connectionMember.create({
-      data: {
-        id: randomUUID(),
-        connectionId,
-        userId: owner,
-        role: MembershipRole.OWNER,
-        state: MembershipState.ACTIVE,
-        createdAt: NOW,
-        updatedAt: NOW,
-      },
-    });
-    for (let i = 0; i < 9; i += 1) {
-      const userId = await createUser(`g_m_${i}_${randomUUID().slice(0, 6)}`);
-      await prisma.connectionMember.create({
-        data: {
-          id: randomUUID(),
-          connectionId,
-          userId,
-          role: MembershipRole.MEMBER,
-          state: MembershipState.ACTIVE,
-          createdAt: NOW,
-          updatedAt: NOW,
-        },
-      });
-    }
-    const eleventh = await createUser(`g_m_10_${randomUUID().slice(0, 6)}`);
+    const owner = await createUser(`third_a_${randomUUID().slice(0, 8)}`);
+    const partner = await createUser(`third_b_${randomUUID().slice(0, 8)}`);
+    const extra = await createUser(`third_c_${randomUUID().slice(0, 8)}`);
+    const connectionId = await createCouple(owner, partner);
     await assert.rejects(
       () =>
         prisma.$transaction(async (tx) => {
-          await tx.connectionMember.create({
+          await tx.connectionPartner.create({
             data: {
               id: randomUUID(),
               connectionId,
-              userId: eleventh,
-              role: MembershipRole.MEMBER,
-              state: MembershipState.ACTIVE,
+              userId: extra,
+              state: CouplePartnerState.ACTIVE,
               createdAt: NOW,
               updatedAt: NOW,
             },
           });
         }),
-      /GROUP_CAPACITY_EXCEEDED/,
+      /COUPLE_THIRD_PARTNER/,
     );
   },
 );
 
-test("second active group Owner fails", { skip: !shouldRun }, async () => {
-  const owner = await createUser(`own_a_${randomUUID().slice(0, 8)}`);
-  const other = await createUser(`own_b_${randomUUID().slice(0, 8)}`);
-  const connectionId = randomUUID();
-  await prisma.connection.create({
-    data: {
-      id: connectionId,
-      type: ConnectionType.GROUP,
-      state: ConnectionState.ACTIVE,
-      createdByUserId: owner,
-      createdAt: NOW,
-      updatedAt: NOW,
-      members: {
-        create: {
-          id: randomUUID(),
-          userId: owner,
-          role: MembershipRole.OWNER,
-          state: MembershipState.ACTIVE,
-          createdAt: NOW,
-          updatedAt: NOW,
-        },
-      },
-    },
-  });
-  await assert.rejects(
-    () =>
-      prisma.connectionMember.create({
-        data: {
-          id: randomUUID(),
-          connectionId,
-          userId: other,
-          role: MembershipRole.OWNER,
-          state: MembershipState.ACTIVE,
-          createdAt: NOW,
-          updatedAt: NOW,
-        },
-      }),
-    /GROUP_OWNER_UNIQUE/,
-  );
-});
+test(
+  "a second pending or active couple for the same user fails",
+  { skip: !shouldRun },
+  async () => {
+    const userA = await createUser(`open_a_${randomUUID().slice(0, 8)}`);
+    const userB = await createUser(`open_b_${randomUUID().slice(0, 8)}`);
+    const userC = await createUser(`open_c_${randomUUID().slice(0, 8)}`);
+    await createCouple(userA, userB, ConnectionState.ACTIVE);
+    await assert.rejects(
+      () => createCouple(userA, userC, ConnectionState.PENDING),
+      /COUPLE_ALREADY_OPEN/,
+    );
+  },
+);
+
+test(
+  "concurrent couple creation cannot give either user a second open couple",
+  { skip: !shouldRun },
+  async () => {
+    const userA = await createUser(`race_a_${randomUUID().slice(0, 8)}`);
+    const userB = await createUser(`race_b_${randomUUID().slice(0, 8)}`);
+    const userC = await createUser(`race_c_${randomUUID().slice(0, 8)}`);
+    const first = createCouple(userA, userB, ConnectionState.PENDING);
+    const second = createCouple(userA, userC, ConnectionState.PENDING);
+    const results = await Promise.allSettled([first, second]);
+    const fulfilled = results.filter((result) => result.status === "fulfilled");
+    const rejected = results.filter((result) => result.status === "rejected");
+    assert.equal(fulfilled.length, 1);
+    assert.equal(rejected.length, 1);
+    const reason =
+      rejected[0].status === "rejected" ? rejected[0].reason : null;
+    assert.match(String(reason), /COUPLE_ALREADY_OPEN/);
+  },
+);
 
 test(
   "duplicate conversation per connection fails",
   { skip: !shouldRun },
   async () => {
     const owner = await createUser(`conv_${randomUUID().slice(0, 8)}`);
-    const connectionId = randomUUID();
-    await prisma.connection.create({
+    const partner = await createUser(`conv_p_${randomUUID().slice(0, 8)}`);
+    const connectionId = await createCouple(owner, partner);
+    await prisma.conversation.create({
       data: {
-        id: connectionId,
-        type: ConnectionType.COUPLE,
-        state: ConnectionState.ACTIVE,
-        createdByUserId: owner,
+        id: randomUUID(),
+        connectionId,
         createdAt: NOW,
         updatedAt: NOW,
-        conversation: {
-          create: {
-            id: randomUUID(),
-            type: ConversationType.COUPLE,
-            createdAt: NOW,
-            updatedAt: NOW,
-          },
-        },
       },
     });
     await assert.rejects(
@@ -247,7 +230,6 @@ test(
           data: {
             id: randomUUID(),
             connectionId,
-            type: ConversationType.COUPLE,
             createdAt: NOW,
             updatedAt: NOW,
           },
@@ -259,24 +241,15 @@ test(
 
 test("duplicate device sequence fails", { skip: !shouldRun }, async () => {
   const userId = await createUser(`seq_${randomUUID().slice(0, 8)}`);
+  const partnerId = await createUser(`seq_p_${randomUUID().slice(0, 8)}`);
   const deviceId = randomUUID();
-  const connectionId = randomUUID();
+  const connectionId = await createCouple(userId, partnerId);
   await prisma.device.create({
     data: {
       id: deviceId,
       userId,
       devicePublicId: `pub-${deviceId.slice(0, 8)}`,
       platform: "ANDROID",
-      createdAt: NOW,
-      updatedAt: NOW,
-    },
-  });
-  await prisma.connection.create({
-    data: {
-      id: connectionId,
-      type: ConnectionType.COUPLE,
-      state: ConnectionState.ACTIVE,
-      createdByUserId: userId,
       createdAt: NOW,
       updatedAt: NOW,
     },

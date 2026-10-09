@@ -122,12 +122,6 @@ function safeHttpMessage(status: number, code?: string): string {
   if (code === "AGE_INELIGIBLE") {
     return "Age eligibility was not met";
   }
-  if (code === "CAPTCHA_REQUIRED") {
-    return "Captcha verification is required";
-  }
-  if (code === "CAPTCHA_INVALID") {
-    return "Captcha verification failed";
-  }
   if (code === "ACCOUNT_AGE_INELIGIBLE") {
     return "Account is limited to export and deletion";
   }

@@ -21,7 +21,11 @@ test("blocks provisioning when the published-price floor exceeds the cap", () =>
 
 test("provision script fails closed without mutating cloud", () => {
   const result = spawnSync(process.execPath, [join(dir, "provision.mjs")], {
-    env: { ...process.env, GOOGLE_CLOUD_PROJECT: "", LUVIN_GCP_PROJECT_PRODUCTION: "" },
+    env: {
+      ...process.env,
+      GOOGLE_CLOUD_PROJECT: "",
+      LUVIN_GCP_PROJECT_PRODUCTION: "",
+    },
     encoding: "utf8",
   });
   assert.notEqual(result.status, 0);

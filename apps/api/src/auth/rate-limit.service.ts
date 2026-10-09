@@ -17,10 +17,7 @@ export class RateLimitService {
     @Inject(COUNTER_STORE) private readonly counters: CounterStore,
   ) {}
 
-  async consume(
-    bucket: AuthRateBucket,
-    subject: string,
-  ): Promise<{ challenged: boolean }> {
+  async consume(bucket: AuthRateBucket, subject: string): Promise<void> {
     const policy = this.config.authRateLimits[bucket];
     const key = `rl:${bucket}:${subject}`;
     const count = await this.counters.incr(
@@ -38,6 +35,5 @@ export class RateLimitService {
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
-    return { challenged: count >= policy.captchaAfter };
   }
 }

@@ -69,6 +69,11 @@ export class AccessAuthGuard implements CanActivate {
       );
     }
     const path = request.originalUrl.split("?")[0] ?? "";
+    if (user.accountState === AccountState.PENDING_DELETION) {
+      if (!isDeletionCancellation(request.method, path)) {
+        throw accountStateError("ACCOUNT_PENDING_DELETION");
+      }
+    }
     if (
       user.accountState === AccountState.AGE_INELIGIBLE &&
       !isAgeIneligiblePath(path)
@@ -87,6 +92,12 @@ export class AccessAuthGuard implements CanActivate {
         );
       }
     }
+    if (
+      user.accountState === AccountState.SUSPENDED ||
+      user.accountState === AccountState.DELETED
+    ) {
+      throw accountStateError("ACCOUNT_ACCESS_RESTRICTED");
+    }
     request.auth = {
       userId: claims.sub,
       sessionId: claims.sid,
@@ -94,6 +105,10 @@ export class AccessAuthGuard implements CanActivate {
     };
     return true;
   }
+}
+
+function accountStateError(code: string): HttpException {
+  return new HttpException({ code, fields: {} }, HttpStatus.FORBIDDEN);
 }
 
 function isAgeIneligiblePath(path: string): boolean {
@@ -111,4 +126,8 @@ function isConsentAllowedPath(path: string): boolean {
     path.startsWith("/v1/auth/sessions") ||
     isAgeIneligiblePath(path)
   );
+}
+
+function isDeletionCancellation(method: string, path: string): boolean {
+  return method === "DELETE" && path === "/v1/account/deletion";
 }

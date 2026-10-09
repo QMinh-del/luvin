@@ -60,10 +60,6 @@ class RegisterDto {
   @IsString()
   privacyVersion!: string;
 
-  @IsOptional()
-  @IsString()
-  turnstileToken?: string;
-
   @ValidateNested()
   @Type(() => DeviceDto)
   device!: DeviceDto;
@@ -75,10 +71,6 @@ class LoginDto {
 
   @IsString()
   password!: string;
-
-  @IsOptional()
-  @IsString()
-  turnstileToken?: string;
 
   @ValidateNested()
   @Type(() => DeviceDto)
@@ -97,10 +89,6 @@ class RefreshDto {
 class PasswordResetRequestDto {
   @IsString()
   email!: string;
-
-  @IsOptional()
-  @IsString()
-  turnstileToken?: string;
 }
 
 class PasswordResetConfirmDto {
@@ -135,7 +123,6 @@ export class AuthController {
       body.device,
       request.requestId ?? "missing-request-id",
       clientIp(request),
-      body.turnstileToken,
     );
     return envelope(result, request);
   }
@@ -196,7 +183,6 @@ export class AuthController {
       body.email,
       request.requestId ?? "missing-request-id",
       clientIp(request),
-      body.turnstileToken,
     );
     return {
       data: {},

@@ -41,18 +41,10 @@ async function verifyWithEnv(env: NodeJS.ProcessEnv): Promise<void> {
   await moduleRef.close();
 }
 
-test("API connects to isolated local PostgreSQL, Redis, and private MinIO buckets", async (t) => {
-  if (process.env.RUN_INFRA_TESTS !== "1") {
-    t.skip("Set RUN_INFRA_TESTS=1 after docker compose is healthy");
-    return;
-  }
+test("API connects to isolated local PostgreSQL, Redis, and private MinIO buckets", async () => {
   await verifyWithEnv(LOCAL_ENV);
 });
 
-test("API connects to isolated test PostgreSQL, Redis, and private MinIO buckets", async (t) => {
-  if (process.env.RUN_INFRA_TESTS !== "1") {
-    t.skip("Set RUN_INFRA_TESTS=1 after docker compose is healthy");
-    return;
-  }
+test("API connects to isolated test PostgreSQL, Redis, and private MinIO buckets", async () => {
   await verifyWithEnv(TEST_ENV);
 });

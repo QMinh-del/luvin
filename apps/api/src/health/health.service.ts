@@ -4,15 +4,18 @@ import Redis from "ioredis";
 import type { HealthCheckState, HealthReadyData } from "@luvin/shared-types";
 import type { AppConfig } from "../config/app-config";
 import { APP_CONFIG } from "../config/app-config.token";
-import { LocalServicesConnector } from "../infra/local-services-connector";
+import {
+  OBJECT_STORAGE,
+  type ObjectStoragePort,
+} from "../storage/object-storage.port";
 
 @Injectable()
 export class HealthService {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Optional()
-    @Inject(LocalServicesConnector)
-    private readonly localServices?: LocalServicesConnector,
+    @Inject(OBJECT_STORAGE)
+    private readonly objectStorage?: ObjectStoragePort,
   ) {}
 
   live(): { status: "live" } {
@@ -36,11 +39,11 @@ export class HealthService {
   }
 
   private async pingObjectStorage(): Promise<HealthCheckState> {
-    if (!this.config.localServices || !this.localServices) {
+    if (!this.objectStorage) {
       return "skipped";
     }
     try {
-      await this.localServices.verifyObjectStorage();
+      await this.objectStorage.assertPrivateBuckets();
       return "up";
     } catch {
       return "down";

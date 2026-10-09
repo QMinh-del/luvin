@@ -1,39 +1,65 @@
 import {
   PrismaClient,
   AccountState,
-  ConnectionType,
   ConnectionState,
-  MembershipRole,
-  MembershipState,
+  CouplePartnerState,
   ConsentRequirement,
   LegalDocumentType,
-  ConversationType,
 } from "@prisma/client";
-import { randomUUID } from "node:crypto";
 
 const prisma = new PrismaClient();
 
 const NOW = new Date("2026-01-15T00:00:00.000Z");
 const HASH = "argon2id$synthetic$not-a-real-password-hash";
+const SEED_IDS = {
+  termsVi: "00000000-0000-4000-8000-000000000001",
+  termsEn: "00000000-0000-4000-8000-000000000002",
+  privacyVi: "00000000-0000-4000-8000-000000000003",
+  privacyEn: "00000000-0000-4000-8000-000000000004",
+  userA: "00000000-0000-4000-8000-000000000011",
+  userB: "00000000-0000-4000-8000-000000000012",
+  userC: "00000000-0000-4000-8000-000000000013",
+  userAConsent: "00000000-0000-4000-8000-000000000021",
+  userBConsent: "00000000-0000-4000-8000-000000000022",
+  userCConsent: "00000000-0000-4000-8000-000000000023",
+  couple: "00000000-0000-4000-8000-000000000031",
+  coupleMemberA: "00000000-0000-4000-8000-000000000032",
+  coupleMemberB: "00000000-0000-4000-8000-000000000033",
+  coupleConversation: "00000000-0000-4000-8000-000000000034",
+} as const;
+const SEED_EMAILS = [
+  "seed.user.a@example.test",
+  "seed.user.b@example.test",
+  "seed.user.c@example.test",
+];
+const SEED_LEGAL_CONTENT_URIS = [
+  "seed://legal/terms/vi/2026-01-01",
+  "seed://legal/terms/en/2026-01-01",
+  "seed://legal/privacy/vi/2026-01-01",
+  "seed://legal/privacy/en/2026-01-01",
+];
 
-async function main(): Promise<void> {
-  await prisma.userLegalConsent.deleteMany();
-  await prisma.conversation.deleteMany();
-  await prisma.connectionMember.deleteMany();
-  await prisma.connection.deleteMany();
-  await prisma.profile.deleteMany();
-  await prisma.legalDocument.deleteMany();
-  await prisma.user.deleteMany();
+async function seedDatabase(client: PrismaClient = prisma): Promise<void> {
+  await client.userLegalConsent.deleteMany({
+    where: { user: { emailNormalized: { in: SEED_EMAILS } } },
+  });
+  await client.connection.deleteMany({
+    where: { requestedBy: { emailNormalized: { in: SEED_EMAILS } } },
+  });
+  await client.profile.deleteMany({
+    where: { user: { emailNormalized: { in: SEED_EMAILS } } },
+  });
+  await client.legalDocument.deleteMany({
+    where: { contentUri: { in: SEED_LEGAL_CONTENT_URIS } },
+  });
+  await client.user.deleteMany({
+    where: { emailNormalized: { in: SEED_EMAILS } },
+  });
 
-  const termsVi = randomUUID();
-  const termsEn = randomUUID();
-  const privacyVi = randomUUID();
-  const privacyEn = randomUUID();
-
-  await prisma.legalDocument.createMany({
+  await client.legalDocument.createMany({
     data: [
       {
-        id: termsVi,
+        id: SEED_IDS.termsVi,
         documentType: LegalDocumentType.TERMS,
         version: "2026-01-01",
         language: "vi",
@@ -44,7 +70,7 @@ async function main(): Promise<void> {
         createdAt: NOW,
       },
       {
-        id: termsEn,
+        id: SEED_IDS.termsEn,
         documentType: LegalDocumentType.TERMS,
         version: "2026-01-01",
         language: "en",
@@ -55,7 +81,7 @@ async function main(): Promise<void> {
         createdAt: NOW,
       },
       {
-        id: privacyVi,
+        id: SEED_IDS.privacyVi,
         documentType: LegalDocumentType.PRIVACY,
         version: "2026-01-01",
         language: "vi",
@@ -66,7 +92,7 @@ async function main(): Promise<void> {
         createdAt: NOW,
       },
       {
-        id: privacyEn,
+        id: SEED_IDS.privacyEn,
         documentType: LegalDocumentType.PRIVACY,
         version: "2026-01-01",
         language: "en",
@@ -79,16 +105,30 @@ async function main(): Promise<void> {
     ],
   });
 
-  const userA = randomUUID();
-  const userB = randomUUID();
-  const userC = randomUUID();
-
-  for (const [id, email, username, display] of [
-    [userA, "seed.user.a@example.test", "seed_user_a", "Seed User A"],
-    [userB, "seed.user.b@example.test", "seed_user_b", "Seed User B"],
-    [userC, "seed.user.c@example.test", "seed_user_c", "Seed User C"],
+  for (const [id, consentId, email, username, display] of [
+    [
+      SEED_IDS.userA,
+      SEED_IDS.userAConsent,
+      "seed.user.a@example.test",
+      "seed_user_a",
+      "Seed User A",
+    ],
+    [
+      SEED_IDS.userB,
+      SEED_IDS.userBConsent,
+      "seed.user.b@example.test",
+      "seed_user_b",
+      "Seed User B",
+    ],
+    [
+      SEED_IDS.userC,
+      SEED_IDS.userCConsent,
+      "seed.user.c@example.test",
+      "seed_user_c",
+      "Seed User C",
+    ],
   ] as const) {
-    await prisma.user.create({
+    await client.user.create({
       data: {
         id,
         emailNormalized: email,
@@ -109,7 +149,7 @@ async function main(): Promise<void> {
         },
         legalConsents: {
           create: {
-            id: randomUUID(),
+            id: consentId,
             termsVersion: "2026-01-01",
             privacyVersion: "2026-01-01",
             acceptedAt: NOW,
@@ -120,32 +160,28 @@ async function main(): Promise<void> {
     });
   }
 
-  const coupleId = randomUUID();
-  await prisma.connection.create({
+  await client.connection.create({
     data: {
-      id: coupleId,
-      type: ConnectionType.COUPLE,
+      id: SEED_IDS.couple,
       state: ConnectionState.ACTIVE,
-      createdByUserId: userA,
+      requestedByUserId: SEED_IDS.userA,
       activatedAt: NOW,
       createdAt: NOW,
       updatedAt: NOW,
-      members: {
+      partners: {
         create: [
           {
-            id: randomUUID(),
-            userId: userA,
-            role: MembershipRole.MEMBER,
-            state: MembershipState.ACTIVE,
+            id: SEED_IDS.coupleMemberA,
+            userId: SEED_IDS.userA,
+            state: CouplePartnerState.ACTIVE,
             joinedAt: NOW,
             createdAt: NOW,
             updatedAt: NOW,
           },
           {
-            id: randomUUID(),
-            userId: userB,
-            role: MembershipRole.MEMBER,
-            state: MembershipState.ACTIVE,
+            id: SEED_IDS.coupleMemberB,
+            userId: SEED_IDS.userB,
+            state: CouplePartnerState.ACTIVE,
             joinedAt: NOW,
             createdAt: NOW,
             updatedAt: NOW,
@@ -154,52 +190,7 @@ async function main(): Promise<void> {
       },
       conversation: {
         create: {
-          id: randomUUID(),
-          type: ConversationType.COUPLE,
-          createdAt: NOW,
-          updatedAt: NOW,
-        },
-      },
-    },
-  });
-
-  const groupId = randomUUID();
-  await prisma.connection.create({
-    data: {
-      id: groupId,
-      type: ConnectionType.GROUP,
-      state: ConnectionState.ACTIVE,
-      name: "Seed Group",
-      createdByUserId: userA,
-      activatedAt: NOW,
-      createdAt: NOW,
-      updatedAt: NOW,
-      members: {
-        create: [
-          {
-            id: randomUUID(),
-            userId: userA,
-            role: MembershipRole.OWNER,
-            state: MembershipState.ACTIVE,
-            joinedAt: NOW,
-            createdAt: NOW,
-            updatedAt: NOW,
-          },
-          {
-            id: randomUUID(),
-            userId: userC,
-            role: MembershipRole.MEMBER,
-            state: MembershipState.ACTIVE,
-            joinedAt: NOW,
-            createdAt: NOW,
-            updatedAt: NOW,
-          },
-        ],
-      },
-      conversation: {
-        create: {
-          id: randomUUID(),
-          type: ConversationType.GROUP,
+          id: SEED_IDS.coupleConversation,
           createdAt: NOW,
           updatedAt: NOW,
         },
@@ -208,7 +199,7 @@ async function main(): Promise<void> {
   });
 }
 
-main()
+seedDatabase()
   .then(async () => {
     await prisma.$disconnect();
   })

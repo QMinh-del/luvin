@@ -5,16 +5,24 @@
   "scripts": {
     "build": "nest build",
     "start": "nest start",
+    "start:prod": "node dist/main.js",
     "start:dev": "nest start --watch",
+    "start:local": "node --env-file=../../.env ../../node_modules/@nestjs/cli/bin/nest.js start --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --import tsx --test --test-concurrency=1 --test-force-exit src/app.bootstrap.spec.ts src/config/app-config.spec.ts src/infra/local-services-config.spec.ts src/observability/redact.spec.ts src/observability/request-tracing.spec.ts src/observability/api-exception.filter.spec.ts src/health/health.http.spec.ts src/mail/mail-observability.spec.ts src/auth/password-hasher.spec.ts src/auth/age-eligibility.spec.ts src/auth/turnstile.spec.ts src/auth/rate-limit.spec.ts src/auth/auth.http.spec.ts",
-    "test:infra": "prisma generate && node --import tsx --test src/infra/local-services-connectivity.integration.spec.ts src/prisma/schema.invariants.integration.spec.ts",
+    "test": "node --import tsx --test --test-concurrency=1 --test-force-exit src/app.bootstrap.spec.ts src/config/app-config.spec.ts src/infra/local-services-config.spec.ts src/observability/redact.spec.ts src/observability/request-tracing.spec.ts src/observability/api-exception.filter.spec.ts src/health/health.http.spec.ts src/mail/mail-observability.spec.ts src/auth/password-hasher.spec.ts src/auth/age-eligibility.spec.ts src/auth/rate-limit.spec.ts src/auth/auth.http.spec.ts src/couple/couple-policy.spec.ts src/couple/couple.http.spec.ts src/chat/chat-policy.spec.ts src/location/location-policy.spec.ts src/social/social-policy.spec.ts src/storage/object-key.spec.ts src/storage/object-storage.service.spec.ts src/storage/object-storage.adapters.spec.ts src/storage/media.http.spec.ts",
+    "test:infra": "prisma generate && node --import tsx --test src/infra/local-services-connectivity.integration.spec.ts src/prisma/seed.integration.spec.ts src/prisma/schema.invariants.integration.spec.ts src/couple/couple.http.spec.ts src/storage/object-storage.adapters.spec.ts",
+    "test:infra:local": "node --env-file=../../.env ../../node_modules/prisma/build/index.js generate && node --env-file=../../.env --import tsx --test src/infra/local-services-connectivity.integration.spec.ts src/prisma/seed.integration.spec.ts src/prisma/schema.invariants.integration.spec.ts src/storage/object-storage.adapters.spec.ts",
+    "test:infra:b02": "node --import tsx --test --test-name-pattern=\"isolated test\" src/infra/local-services-connectivity.integration.spec.ts",
+    "test:infra:b02:local": "node --import tsx --test --test-name-pattern=\"isolated local\" src/infra/local-services-connectivity.integration.spec.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:migrate:local": "node --env-file=../../.env ../../node_modules/prisma/build/index.js migrate deploy",
+    "prisma:seed:local": "node --env-file=../../.env --import tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@google-cloud/storage": "^8.2.0",
     "@luvin/shared-types": "0.0.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
@@ -27,7 +35,8 @@
     "jsonwebtoken": "^9.0.2",
     "minio": "^8.0.6",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "ws": "8.18.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
@@ -36,6 +45,7 @@
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.5.2",
+    "@types/ws": "8.18.1",
     "eslint": "^9.35.0",
     "prisma": "^6.16.1",
     "tsx": "^4.20.5",

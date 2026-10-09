@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { AccountState, ConsentRequirement } from "@prisma/client";
 import { randomUUID } from "node:crypto";
-import { isAgeEligibleOn } from "./age-eligibility";
+import { isAgeEligibleOn, isValidDateOfBirthOn } from "./age-eligibility";
 import {
   dummyVerifyPassword,
   hashPassword,
@@ -15,7 +15,6 @@ import { MailSender } from "../mail/mail-sender";
 import { StructuredLogger } from "../observability/structured-logger";
 import { RateLimitService } from "./rate-limit.service";
 import { hashRefreshToken, TokenService } from "./token.service";
-import { TurnstileService } from "./turnstile.service";
 
 export type DeviceInput = {
   publicId: string;
@@ -32,7 +31,6 @@ export type RegisterInput = {
   displayName: string;
   termsVersion: string;
   privacyVersion: string;
-  turnstileToken?: string;
   device: DeviceInput;
 };
 
@@ -55,7 +53,6 @@ export class AuthService {
     @Inject(StructuredLogger) private readonly logger: StructuredLogger,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(RateLimitService) private readonly rateLimits: RateLimitService,
-    @Inject(TurnstileService) private readonly turnstile: TurnstileService,
     @Inject(MailSender) private readonly mail: MailSender,
   ) {}
 
@@ -64,14 +61,6 @@ export class AuthService {
     requestId: string,
     ip: string,
   ): Promise<AuthResult> {
-    const challenged = (await this.rateLimits.consume("register", ip))
-      .challenged;
-    await this.turnstile.enforce({
-      challenged,
-      token: input.turnstileToken,
-      action: "register",
-      ip,
-    });
     const email = normalizeEmail(input.email);
     if (!email.includes("@")) {
       throw apiError(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED");
@@ -82,9 +71,13 @@ export class AuthService {
     if (input.displayName.length < 1 || input.displayName.length > 50) {
       throw apiError(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED");
     }
+    if (!isValidDateOfBirthOn(input.dateOfBirth)) {
+      throw apiError(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED");
+    }
     if (!isAgeEligibleOn(input.dateOfBirth)) {
       throw apiError(HttpStatus.UNPROCESSABLE_ENTITY, "AGE_INELIGIBLE");
     }
+    await this.rateLimits.consume("register", ip);
     const current = await this.currentLegalVersions();
     if (
       input.termsVersion !== current.terms ||
@@ -160,18 +153,9 @@ export class AuthService {
     device: DeviceInput,
     requestId: string,
     ip: string,
-    turnstileToken?: string,
   ): Promise<AuthResult> {
     const email = normalizeEmail(emailRaw);
-    const challenged = (
-      await this.rateLimits.consume("login", `${ip}:${email}`)
-    ).challenged;
-    await this.turnstile.enforce({
-      challenged,
-      token: turnstileToken,
-      action: "login",
-      ip,
-    });
+    await this.rateLimits.consume("login", `${ip}:${email}`);
     const user = await this.prisma.client.user.findUnique({
       where: { emailNormalized: email },
     });
@@ -181,6 +165,12 @@ export class AuthService {
     }
     const verified = await verifyPassword(password, user.passwordHash);
     if (!verified.ok) {
+      throw apiError(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_CREDENTIALS");
+    }
+    if (
+      user.accountState === AccountState.SUSPENDED ||
+      user.accountState === AccountState.DELETED
+    ) {
       throw apiError(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_CREDENTIALS");
     }
     if (verified.needsRehash) {
@@ -293,18 +283,9 @@ export class AuthService {
     emailRaw: string,
     requestId: string,
     ip: string,
-    turnstileToken?: string,
   ): Promise<void> {
     const email = normalizeEmail(emailRaw);
-    const challenged = (
-      await this.rateLimits.consume("password_reset", `${ip}:${email}`)
-    ).challenged;
-    await this.turnstile.enforce({
-      challenged,
-      token: turnstileToken,
-      action: "password_reset",
-      ip,
-    });
+    await this.rateLimits.consume("password_reset", `${ip}:${email}`);
     const user = await this.prisma.client.user.findUnique({
       where: { emailNormalized: email },
     });
@@ -511,6 +492,9 @@ export class AuthService {
     }
     if (user.birthDateCorrectionCount >= 1) {
       throw apiError(HttpStatus.CONFLICT, "DOB_CORRECTION_USED");
+    }
+    if (!isValidDateOfBirthOn(dateOfBirth)) {
+      throw apiError(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED");
     }
     const eligible = isAgeEligibleOn(dateOfBirth);
     const accountState = eligible

@@ -2,7 +2,7 @@
 
 Currency: USD. Cap: less than 50 per calendar month.
 
-Sources retrieved 2026-09-19:
+Sources retrieved 2026-09-19 and rechecked 2026-09-27:
 
 - [Memorystore for Redis pricing](https://cloud.google.com/memorystore/docs/redis/pricing) — Basic M1 (1–4 GiB) default **$0.049 per GiB-hour**
 - [Cloud Run pricing](https://cloud.google.com/run/pricing) — Singapore (`asia-southeast1`) is listed on Google's Tier 2 table; Taiwan and Tokyo are on the other regional table. Exact CPU/memory unit prices were not re-quoted into this file as a fake invoice.

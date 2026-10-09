@@ -5,7 +5,11 @@ import { randomUUID } from "node:crypto";
 import { ValidationPipe, type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import argon2 from "argon2";
-import { ConsentRequirement, LegalDocumentType } from "@prisma/client";
+import {
+  AccountState,
+  ConsentRequirement,
+  LegalDocumentType,
+} from "@prisma/client";
 import { AppModule } from "../app.module";
 import { MAIL_SINK, type MailSink } from "../mail/mail-sender";
 import { PrismaService } from "../prisma/prisma.service";
@@ -129,7 +133,7 @@ test(
   "registration rejects under-18 without creating a session",
   { skip: !shouldRun },
   async () => {
-    const { app, prisma } = await createApp();
+    const { app } = await createApp();
     const port = await listen(app);
     const suffix = randomUUID().slice(0, 8);
     const response = await fetch(`${origin(port)}/v1/auth/register`, {
@@ -428,7 +432,6 @@ test(
     const { app, prisma } = await createApp({
       ...TEST_ENV,
       AUTH_RATE_LIMIT_REGISTER_MAX: "2",
-      AUTH_TURNSTILE_REGISTER_AFTER: "9",
     });
     const port = await listen(app);
     await registerAccount(port, prisma);
@@ -461,55 +464,89 @@ test(
 );
 
 test(
-  "challenged registration requires a one-time Turnstile token",
+  "an invalid date of birth does not advance the registration rate limit",
   { skip: !shouldRun },
   async () => {
-    const { app, prisma } = await createApp({
-      ...TEST_ENV,
-      AUTH_TURNSTILE_REGISTER_AFTER: "1",
-      AUTH_RATE_LIMIT_REGISTER_MAX: "5",
-    });
+    const { app, prisma } = await createApp();
     const port = await listen(app);
     const suffix = randomUUID().slice(0, 8);
     const legal = await latestLegal(prisma);
     const payload = {
-      email: `cap_${suffix}@example.test`,
+      email: `dob_${suffix}@example.test`,
       password: "StrongPassword1!",
-      dateOfBirth: "1990-01-01",
-      username: `c_${suffix.slice(0, 14)}`,
-      displayName: "Captcha",
+      username: `dob_${suffix}`,
+      displayName: "Date tester",
       termsVersion: legal.terms,
       privacyVersion: legal.privacy,
-      device: { publicId: `dev-cap-${suffix}` },
+      device: { publicId: `dev-dob-${suffix}` },
     };
-    const missing = await fetch(`${origin(port)}/v1/auth/register`, {
+    const invalid = await fetch(`${origin(port)}/v1/auth/register`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, dateOfBirth: "11/10/2004" }),
     });
-    const missingBody = (await missing.json()) as { error: { code: string } };
-    assert.equal(missing.status, 422);
-    assert.equal(missingBody.error.code, "CAPTCHA_REQUIRED");
-    const token = "local-turnstile-ok";
-    const first = await fetch(`${origin(port)}/v1/auth/register`, {
+    const invalidBody = (await invalid.json()) as { error: { code: string } };
+    assert.equal(invalid.status, 422);
+    assert.equal(invalidBody.error.code, "VALIDATION_FAILED");
+
+    const valid = await fetch(`${origin(port)}/v1/auth/register`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...payload, turnstileToken: token }),
+      body: JSON.stringify({ ...payload, dateOfBirth: "2004-10-11" }),
     });
-    assert.equal(first.status, 201);
-    const replay = await fetch(`${origin(port)}/v1/auth/register`, {
+    assert.equal(valid.status, 201, await valid.text());
+    await app.close();
+  },
+);
+
+test(
+  "non-active account states cannot access product APIs or create new sessions",
+  { skip: !shouldRun },
+  async () => {
+    const { app, prisma } = await createApp();
+    const port = await listen(app);
+    const registered = await registerAccount(port, prisma);
+
+    const requestedAt = new Date("2026-09-27T00:00:00.000Z");
+    await prisma.client.user.update({
+      where: { id: registered.body.userId },
+      data: {
+        accountState: AccountState.PENDING_DELETION,
+        deletionRequestedAt: requestedAt,
+        deletionExecuteAt: new Date("2026-10-27T00:00:00.000Z"),
+      },
+    });
+    const pending = await fetch(`${origin(port)}/v1/auth/sessions`, {
+      headers: { authorization: `Bearer ${registered.body.accessToken}` },
+    });
+    const pendingBody = (await pending.json()) as { error: { code: string } };
+    assert.equal(pending.status, 403);
+    assert.equal(pendingBody.error.code, "ACCOUNT_PENDING_DELETION");
+
+    await prisma.client.user.update({
+      where: { id: registered.body.userId },
+      data: {
+        accountState: AccountState.SUSPENDED,
+        deletionRequestedAt: null,
+        deletionExecuteAt: null,
+      },
+    });
+    const suspended = await fetch(`${origin(port)}/v1/auth/sessions`, {
+      headers: { authorization: `Bearer ${registered.body.accessToken}` },
+    });
+    assert.equal(suspended.status, 403);
+    const login = await fetch(`${origin(port)}/v1/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        ...payload,
-        email: `cap2_${suffix}@example.test`,
-        username: `d_${suffix.slice(0, 14)}`,
-        turnstileToken: token,
+        email: registered.email,
+        password: registered.password,
+        device: { publicId: `suspended-${registered.suffix}` },
       }),
     });
-    const replayBody = (await replay.json()) as { error: { code: string } };
-    assert.equal(replay.status, 422);
-    assert.equal(replayBody.error.code, "CAPTCHA_INVALID");
+    const loginBody = (await login.json()) as { error: { code: string } };
+    assert.equal(login.status, 401);
+    assert.equal(loginBody.error.code, "AUTH_INVALID_CREDENTIALS");
     await app.close();
   },
 );
@@ -722,7 +759,6 @@ test(
   async () => {
     const { app, prisma } = await createApp({
       ...TEST_ENV,
-      AUTH_TURNSTILE_REGISTER_AFTER: "9",
       AUTH_RATE_LIMIT_REGISTER_MAX: "10",
     });
     const port = await listen(app);
@@ -810,7 +846,6 @@ test(
     const { app, prisma } = await createApp({
       ...TEST_ENV,
       AUTH_RATE_LIMIT_LOGIN_MAX: "2",
-      AUTH_TURNSTILE_LOGIN_AFTER: "9",
     });
     const port = await listen(app);
     const registered = await registerAccount(port, prisma);
@@ -846,7 +881,6 @@ test(
     const { app, prisma } = await createApp({
       ...TEST_ENV,
       AUTH_RATE_LIMIT_PASSWORD_RESET_MAX: "2",
-      AUTH_TURNSTILE_PASSWORD_RESET_AFTER: "9",
       AUTH_RATE_LIMIT_EMAIL_CHANGE_MAX: "2",
     });
     const port = await listen(app);

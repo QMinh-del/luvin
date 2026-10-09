@@ -1,5 +1,3 @@
-name: luvin-test
-
 services:
   postgres:
     image: postgres:16-alpine@sha256:3c5c8892d184f738f4fe282d14ddaa613a38f00f4189d2d94725ebe6f2909ddb
@@ -8,7 +6,7 @@ services:
       POSTGRES_PASSWORD: luvin
       POSTGRES_DB: luvin_test
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
@@ -20,7 +18,7 @@ services:
   redis:
     image: redis:7.4-alpine@sha256:520775a41a63e77e06c73e35d2fd9cc15921a609516818796b4ecbb813078bc7
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     tmpfs:
       - /data
     healthcheck:
@@ -36,8 +34,8 @@ services:
       MINIO_ROOT_USER: luvin
       MINIO_ROOT_PASSWORD: luvinminio
     ports:
-      - "9100:9000"
-      - "9101:9001"
+      - "127.0.0.1:9100:9000"
+      - "127.0.0.1:9101:9001"
     tmpfs:
       - /data
     healthcheck:
@@ -64,7 +62,7 @@ services:
       - |
         set -eu
         mc alias set luvin http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
-        mc mb -p luvin/"$$MINIO_AVATAR_BUCKET"
-        mc mb -p luvin/"$$MINIO_EXPORT_BUCKET"
+        mc mb --ignore-existing luvin/"$$MINIO_AVATAR_BUCKET"
+        mc mb --ignore-existing luvin/"$$MINIO_EXPORT_BUCKET"
         mc anonymous set none luvin/"$$MINIO_AVATAR_BUCKET"
         mc anonymous set none luvin/"$$MINIO_EXPORT_BUCKET"

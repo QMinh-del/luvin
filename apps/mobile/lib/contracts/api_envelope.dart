@@ -13,7 +13,8 @@ class ApiErrorEnvelope {
 
   factory ApiErrorEnvelope.fromJson(Map<String, dynamic> json) {
     final error = json['error'] as Map<String, dynamic>;
-    final rawFields = error['fields'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final rawFields =
+        error['fields'] as Map<String, dynamic>? ?? <String, dynamic>{};
     return ApiErrorEnvelope(
       code: error['code'] as String,
       message: error['message'] as String,

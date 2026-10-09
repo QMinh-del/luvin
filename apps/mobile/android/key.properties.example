@@ -1,0 +1,6 @@
+# Copy to android/key.properties. This file is intentionally not usable as-is.
+# Use an absolute path outside the repository for storeFile.
+storeFile=C:\\replace-with-a-private-path\\luvin-upload.jks
+storePassword=replace-with-keystore-password
+keyAlias=luvin-upload
+keyPassword=replace-with-key-password

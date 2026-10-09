@@ -19,4 +19,3 @@ That command exits without changing cloud resources when `GOOGLE_CLOUD_PROJECT` 
 ## Production topology (TASK-B05)
 
 See `infrastructure/gcp/topology.md` and `infrastructure/gcp/cost-estimate.md`. Region is not selected. `npm run gcp:provision` is fail-closed and currently blocked because the published-price floor exceeds the USD 50 monthly cap.
-

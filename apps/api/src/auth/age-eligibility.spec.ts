@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isAgeEligibleOn } from "./age-eligibility";
+import { isAgeEligibleOn, isValidDateOfBirthOn } from "./age-eligibility";
 
 test("rejects under 18 using Asia/Ho_Chi_Minh calendar date", () => {
   const noonIct = new Date("2026-09-19T05:00:00.000Z");
@@ -10,6 +10,9 @@ test("rejects under 18 using Asia/Ho_Chi_Minh calendar date", () => {
 
 test("rejects malformed dates", () => {
   assert.equal(isAgeEligibleOn("2000/01/01", new Date()), false);
+  assert.equal(isValidDateOfBirthOn("2000/01/01", new Date()), false);
+  assert.equal(isValidDateOfBirthOn("2000-02-30", new Date()), false);
+  assert.equal(isValidDateOfBirthOn("2099-01-01", new Date()), false);
 });
 
 test("rejects impossible, future, and leap-day edge dates in Asia/Ho_Chi_Minh", () => {

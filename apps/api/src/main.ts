@@ -1,8 +1,13 @@
+import type { Server } from "node:http";
 import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { ConfigValidationError, readAppConfig } from "./config/app-config";
+import { PrismaService } from "./prisma/prisma.service";
+import { attachRealtime } from "./realtime/attach-realtime";
+import { RealtimeHub } from "./realtime/realtime.hub";
+import { TokenService } from "./auth/token.service";
 import { StructuredLogger } from "./observability/structured-logger";
 
 async function bootstrap(): Promise<void> {
@@ -40,7 +45,14 @@ async function bootstrap(): Promise<void> {
     }),
   );
   logger.startupSummary();
-  await app.listen(config.port);
+  app.enableShutdownHooks();
+  attachRealtime(
+    app.getHttpServer() as Server,
+    app.get(TokenService),
+    app.get(PrismaService),
+    app.get(RealtimeHub),
+  );
+  await app.listen(config.port, "0.0.0.0");
 }
 
 void bootstrap();

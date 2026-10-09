@@ -1,7 +1,28 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val releaseKeystorePropertiesFile = rootProject.file("key.properties")
+val releaseKeystoreProperties = Properties()
+val releaseBuildRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+
+if (releaseKeystorePropertiesFile.exists()) {
+    releaseKeystorePropertiesFile.inputStream().use(releaseKeystoreProperties::load)
+}
+
+if (releaseBuildRequested && !releaseKeystorePropertiesFile.exists()) {
+    throw GradleException(
+        "Release signing requires android/key.properties. Copy key.properties.example " +
+            "locally and configure an Android upload keystore; never commit either secret.",
+    )
 }
 
 android {
@@ -30,9 +51,14 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (releaseKeystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.create("release") {
+                    keyAlias = releaseKeystoreProperties.getProperty("keyAlias")
+                    keyPassword = releaseKeystoreProperties.getProperty("keyPassword")
+                    storeFile = file(releaseKeystoreProperties.getProperty("storeFile"))
+                    storePassword = releaseKeystoreProperties.getProperty("storePassword")
+                }
+            }
         }
     }
 }

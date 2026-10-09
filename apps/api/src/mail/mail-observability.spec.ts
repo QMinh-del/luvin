@@ -18,6 +18,9 @@ test("mail failure logs do not include recipient or reset link", () => {
       DATABASE_URL: "postgresql://luvin:luvin@127.0.0.1:5432/luvin_dev",
       REDIS_URL: "redis://127.0.0.1:6379",
       ACCESS_TOKEN_SECRET: "local-test-access-token-secret-32b",
+      MINIO_ENDPOINT: "127.0.0.1:9000",
+      MINIO_ACCESS_KEY: "luvin",
+      MINIO_SECRET_KEY: "luvinminio",
       PASSWORD_RECOVERY_ENABLED: "true",
       RESEND_SANDBOX_API_KEY: "re_test_sandbox",
     });

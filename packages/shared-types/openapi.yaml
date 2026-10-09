@@ -45,7 +45,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthSessionResponse"
         "422":
-          description: Validation, age, legal, or captcha failure
+          description: Validation, age, or legal-consent failure
           content:
             application/json:
               schema:
@@ -142,7 +142,89 @@ paths:
       responses:
         "204":
           description: Consent recorded
+  /me/pairing-codes:
+    post:
+      summary: Create a one-time pairing code
+      operationId: postMePairingCodes
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Pairing code created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairingCodeIssueResponse"
+        "409":
+          description: User already has a pending or active couple
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+  /me/pairing-codes/current:
+    get:
+      summary: Read current pairing-code status without plaintext
+      operationId: getMePairingCodesCurrent
+      responses:
+        "200":
+          description: Current pairing-code status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairingCodeStatusResponse"
+  /pairing-codes/redeem:
+    post:
+      summary: Redeem a one-time pairing code
+      operationId: postPairingCodesRedeem
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  pattern: "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$"
+      responses:
+        "200":
+          description: Pending couple request created; no location grant is created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoupleResponse"
+        "403":
+          description: A block exists in either direction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+        "404":
+          description: Code is unknown, expired, revoked, or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
+        "409":
+          description: Self-pairing or an existing pending or active couple
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorEnvelope"
 components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
   schemas:
     SuccessMeta:
       type: object
@@ -242,5 +324,85 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/AuthSessionData"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    PairingCodeIssue:
+      type: object
+      additionalProperties: false
+      required: [code, expiresAt]
+      properties:
+        code:
+          type: string
+          pattern: "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$"
+        expiresAt:
+          type: string
+          format: date-time
+    PairingCodeStatus:
+      type: object
+      additionalProperties: false
+      required: [active, expiresAt]
+      properties:
+        active:
+          type: boolean
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+    CouplePartner:
+      type: object
+      additionalProperties: false
+      required: [userId, username, displayName, membershipState]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+        membershipState:
+          type: string
+          enum: [INVITED, ACTIVE, LEFT]
+    Couple:
+      type: object
+      additionalProperties: false
+      required: [connectionId, state, invitationId, partners]
+      properties:
+        connectionId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [PENDING, ACTIVE, DISCONNECTED, DELETED]
+        invitationId:
+          type: [string, "null"]
+          format: uuid
+        partners:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/CouplePartner"
+    PairingCodeIssueResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/PairingCodeIssue"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    PairingCodeStatusResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/PairingCodeStatus"
+        meta:
+          $ref: "#/components/schemas/SuccessMeta"
+    CoupleResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/Couple"
         meta:
           $ref: "#/components/schemas/SuccessMeta"

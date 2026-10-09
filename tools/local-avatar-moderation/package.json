@@ -1,0 +1,11 @@
+{
+  "name": "luvin-local-avatar-moderation",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@tensorflow/tfjs": "4.22.0",
+    "nsfwjs": "4.3.0",
+    "sharp": "0.35.4"
+  }
+}

@@ -5,6 +5,7 @@ coverage/
 .dart_tool/
 .packages
 .pub-cache/
+.toolchains/
 .flutter-plugins
 .flutter-plugins-dependencies
 *.iml
@@ -22,6 +23,7 @@ android/app/debug.keystore
 *.keystore
 key.properties
 **/local.properties
+apps/mobile/android/app/google-services.json
 
 apps/mobile/build/
 apps/api/generated/
